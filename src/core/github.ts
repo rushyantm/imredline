@@ -103,7 +103,11 @@ export class GitHub {
   }
 
   /** A retry after a timeout must not file twice. The marker is the first
-   *  line of every body; look through the recent reports for it. */
+   *  line of every body; look through the recent reports for it.
+   *  ⚠️ The list endpoint lags a just-created issue by a second or two
+   *  (measured on production 2026-09-13: an immediate re-POST filed a twin).
+   *  The widget retries only after a 30 s timeout, so the lag never reaches a
+   *  reviewer; anything scripting this API should wait a few seconds first. */
   async findByMarker(requestId: string): Promise<GhIssue | null> {
     try {
       const res = await this.api(`/issues?labels=${REVIEW_LABEL}&state=all&per_page=100&sort=created&direction=desc`);
