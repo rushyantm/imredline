@@ -4,7 +4,10 @@
   "description": "Point at anything on a live website, say what's wrong, and it lands as a GitHub issue — screenshot, pinned element, attachments and all — for humans and AI agents to fix.",
   "license": "MIT",
   "author": "Rushyant Mulpuri",
-  "repository": "github:rushyantm/imredline",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rushyantm/imredline.git"
+  },
   "homepage": "https://github.com/rushyantm/imredline#readme",
   "bugs": "https://github.com/rushyantm/imredline/issues",
   "keywords": [
