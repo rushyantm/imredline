@@ -24,7 +24,7 @@ type Reviewer = {
 (function main() {
   const root = document.getElementById("imq");
   if (!root) return;
-  const BASE = root.dataset.base || "/_imredline";
+  const BASE = root.dataset.base || "/imredline";
   const API = BASE + "/api";
   const params = new URLSearchParams(location.search);
   const token = params.get("token") || "";

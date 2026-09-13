@@ -1,12 +1,12 @@
 /*
   Next.js App Router. One file mounts everything:
 
-    // app/_imredline/[[...path]]/route.ts
+    // app/imredline/[[...path]]/route.ts   (⚠️ no leading underscore — Next skips _folders)
     import { imredline } from "imredline/next";
     export const dynamic = "force-dynamic";
     export const { GET, POST, PATCH, DELETE, OPTIONS } = imredline();
 
-  Then in the root layout:  <script src="/_imredline/widget.js" defer />
+  Then in the root layout:  <script src="/imredline/widget.js" defer />
   Node runtime only (the handler uses node:crypto and node:fs).
 */
 

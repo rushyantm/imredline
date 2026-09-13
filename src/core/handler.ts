@@ -1,7 +1,7 @@
 /*
   One framework-free request handler. Next.js and plain Node both call
   `handle(request)`; it answers everything under IMREDLINE_BASE (default
-  `/_imredline`) and returns null for anything else.
+  `/imredline`) and returns null for anything else.
 
     GET    <base>/widget.js | queue.js | html2canvas.js   static
     GET    <base>/queue                                   the queue page

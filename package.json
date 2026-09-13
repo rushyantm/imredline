@@ -1,6 +1,6 @@
 {
   "name": "imredline",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Point at anything on a live website, say what's wrong, and it lands as a GitHub issue \u2014 screenshot, pinned element, attachments and all \u2014 for humans and AI agents to fix.",
   "license": "MIT",
   "author": "Rushyant Mulpuri",

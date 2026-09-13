@@ -138,7 +138,7 @@ The valuable part, and the part with the most scar tissue. **NN's engine is the 
 
 | Feature | Best copy | Evidence | v1 |
 |---|---|---|---|
-| `/review` reads `tester-feedback` issues straight off GitHub; queue and GitHub can never disagree | NN | `page.tsx:1-9, 133-136` | Keep, at `/_imredline/queue` |
+| `/review` reads `tester-feedback` issues straight off GitHub; queue and GitHub can never disagree | NN | `page.tsx:1-9, 133-136` | Keep, at `/imredline/queue` |
 | Screenshot thumbnails proxied through the server with the PAT (private repo won't serve to an `<img>`), path-jailed, bytes sniffed for mime | NN | `shot/route.ts` | Keep |
 | Click a thumbnail to zoom | NN | `ReviewQueue.tsx:51, 156-161` | Keep |
 | **Open first**, newest first within status | NN | `page.tsx:172-176` | Keep |
@@ -222,7 +222,7 @@ The one mode that lets IMRedline review a site it isn't installed on — **which
 
 ## 3. What v1 is, in one paragraph
 
-NN's capture engine + Aradea's canvas marker and background capture (form masking available as an off-by-default switch) + Aradea's attachments + NN's GitHub store, queue and bot-label chips + PEMA's third-party-site mode + reviewer minting with expiry and site scope, in one package that mounts at `/_imredline/…` on Next.js and plain Node.
+NN's capture engine + Aradea's canvas marker and background capture (form masking available as an off-by-default switch) + Aradea's attachments + NN's GitHub store, queue and bot-label chips + PEMA's third-party-site mode + reviewer minting with expiry and site scope, in one package that mounts at `/imredline/…` on Next.js and plain Node.
 
 ## 4. Decisions still open — one at a time, after sign-off
 

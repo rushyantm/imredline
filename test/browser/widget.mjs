@@ -29,7 +29,7 @@ const env = { ...TEST_ENV, IMREDLINE_DATA_DIR: await mkdtemp(join(tmpdir(), "imr
 const imredline = createNodeHandler({ env, fetch: gh.fetch });
 const fixture = (await readFile(join(ROOT, "test/browser/fixture.html"), "utf8")).replace(
   "</body>",
-  '<script src="/_imredline/widget.js" defer></script></body>',
+  '<script src="/imredline/widget.js" defer></script></body>',
 );
 
 const server = createServer(async (req, res) => {
@@ -166,10 +166,10 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
 {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   const page = await ctx.newPage();
-  await page.goto(`${base}/_imredline/queue`);
+  await page.goto(`${base}/imredline/queue`);
   await page.waitForSelector(".imq-gate");
   check("queue: gated without a token", true);
-  await page.goto(`${base}/_imredline/queue?token=admin-secret-token`);
+  await page.goto(`${base}/imredline/queue?token=admin-secret-token`);
   await page.waitForSelector(".imq-card");
   check("queue: two cards", (await page.locator(".imq-card").count()) === 2, String(await page.locator(".imq-card").count()));
   const loaded = await page.evaluate(() => {
@@ -190,7 +190,7 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
   await page.waitForFunction(() => document.querySelectorAll(".imq-card").length === 1);
   check("queue: Done closes the issue on GitHub", gh.state.issues[0].state === "closed" || gh.state.issues[1].state === "closed");
   /* The bare URL works now — the ?token= visit armed this browser. */
-  await page.goto(`${base}/_imredline/queue`);
+  await page.goto(`${base}/imredline/queue`);
   await page.waitForSelector(".imq-card");
   check("queue: bare URL works after the token visit", true);
   await page.click(".imq-manage");

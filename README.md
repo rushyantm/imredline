@@ -13,7 +13,7 @@ Community-supported. MIT.
 1. Opens the private link you give them once (`https://yoursite.com/?imredline=…`). A small **🛠 Review** button appears on every page, in that browser, until the link expires or is revoked.
 2. Clicks Review, then clicks anything on the page. A dialog opens; the screenshot of that area is taken in the background with a red box on what they pinned.
 3. Picks **Bug / Change / Idea**, writes a note, optionally attaches samples (paste or drop images, a link, a file path), checks the **phone / tablet / desktop** chip the widget guessed, and hits Send.
-4. It becomes a GitHub issue labelled `tester-feedback`. Your queue at `/_imredline/queue` shows it; so does GitHub.
+4. It becomes a GitHub issue labelled `tester-feedback`. Your queue at `/imredline/queue` shows it; so does GitHub.
 
 ## Install
 
@@ -24,7 +24,7 @@ npm install imredline
 ### Next.js (App Router)
 
 ```ts
-// app/_imredline/[[...path]]/route.ts
+// app/imredline/[[...path]]/route.ts
 import { imredline } from "imredline/next";
 export const dynamic = "force-dynamic";
 export const { GET, POST, PATCH, DELETE, OPTIONS } = imredline();
@@ -32,7 +32,7 @@ export const { GET, POST, PATCH, DELETE, OPTIONS } = imredline();
 
 ```tsx
 // app/layout.tsx — anywhere in <body>
-<script src="/_imredline/widget.js" defer />
+<script src="/imredline/widget.js" defer />
 ```
 
 Node runtime only (the handler uses `node:crypto` and `node:fs`).
@@ -44,12 +44,12 @@ import { createNodeHandler } from "imredline/node";
 const imredline = createNodeHandler();
 
 http.createServer(async (req, res) => {
-  if (await imredline(req, res)) return;   // handled everything under /_imredline
+  if (await imredline(req, res)) return;   // handled everything under /imredline
   // …your routes
 });
 ```
 
-Add the same `<script src="/_imredline/widget.js" defer>` to your pages.
+Add the same `<script src="/imredline/widget.js" defer>` to your pages.
 
 ### A site you don't host (Squarespace, an old CMS, a page behind GTM)
 
@@ -60,7 +60,7 @@ IMREDLINE_ORIGINS=https://www.pebblebeachvizag.com
 ```
 
 ```html
-<script src="https://your-imredline-host.com/_imredline/widget.js" defer
+<script src="https://your-imredline-host.com/imredline/widget.js" defer
         data-host="https://your-imredline-host.com"></script>
 ```
 
@@ -79,13 +79,13 @@ Reports carry `host/path` so the issue says which site they came from. The token
 | `IMREDLINE_ORIGINS` | Third-party origins allowed to post, comma-separated. Empty = same-origin only. |
 | `IMREDLINE_DATA_DIR` | Where minted reviewer links (SHA-256 only) live. Default `.imredline`. On Railway, point it at a volume or minted links vanish on redeploy; env reviewers are unaffected. |
 | `IMREDLINE_MASK_FORMS` | `1` blanks form fields in screenshots. Default off — testers need to see what they typed. Anything with `data-imredline-private` is always blanked. |
-| `IMREDLINE_BASE` | Mount path. Default `/_imredline`. |
+| `IMREDLINE_BASE` | Mount path. Default `/imredline`. |
 
 Without the GitHub variables every write returns 503 and the widget says so. It ships dormant and loud, never silently dropping reports.
 
 ## The queue
 
-`/_imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Open / Done is the issue's open / closed state — one call, nothing can half-apply. The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
+`/imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Open / Done is the issue's open / closed state — one call, nothing can half-apply. The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
 
 **Reviewer links** are minted there: name, how long the link lasts (1–90 days), optionally which site it may report on. The link is shown once; only its hash is stored. Revoke takes effect on that browser's next page load.
 

@@ -22,8 +22,8 @@ export function config(env: Env = process.env) {
     dataDir: get("IMREDLINE_DATA_DIR") || ".imredline",
     /** "1" blanks form fields in screenshots. Off by owner ruling. */
     maskForms: get("IMREDLINE_MASK_FORMS") === "1",
-    /** Mount path. Default `/_imredline`. */
-    base: (get("IMREDLINE_BASE") || "/_imredline").replace(/\/+$/, ""),
+    /** Mount path. Default `/imredline`. */
+    base: (get("IMREDLINE_BASE") || "/imredline").replace(/\/+$/, ""),
     secure: (env.NODE_ENV || "").trim() === "production",
   };
 }

@@ -1,8 +1,8 @@
 /*
   The IMRedline widget. One script tag on any site:
 
-    <script src="/_imredline/widget.js" defer></script>                same-origin
-    <script src="https://host/_imredline/widget.js" defer
+    <script src="/imredline/widget.js" defer></script>                same-origin
+    <script src="https://host/imredline/widget.js" defer
             data-host="https://host"></script>                         third-party (PEMA mode)
 
   Nothing renders for an ordinary visitor. A reviewer opens ?imredline=<token>
@@ -40,7 +40,7 @@ declare global {
   const me = document.currentScript as HTMLScriptElement | null;
   const src = me?.src ? new URL(me.src, location.href) : null;
   const HOST = (me?.dataset.host || src?.origin || location.origin).replace(/\/+$/, "");
-  const BASE = (me?.dataset.base || (src ? src.pathname.replace(/\/widget\.js$/, "") : "/_imredline")).replace(/\/+$/, "");
+  const BASE = (me?.dataset.base || (src ? src.pathname.replace(/\/widget\.js$/, "") : "/imredline")).replace(/\/+$/, "");
   const API = HOST + BASE + "/api";
   const CROSS = HOST !== location.origin;
   const PARAM = me?.dataset.param || "imredline";
