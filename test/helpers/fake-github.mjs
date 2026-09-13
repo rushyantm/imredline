@@ -77,7 +77,7 @@ export const PNG_1x1 =
 export const TEST_ENV = {
   IMREDLINE_ADMIN_TOKEN: "admin-secret-token",
   IMREDLINE_ADMIN_NAME: "rishi",
-  IMREDLINE_REVIEWERS: "ravi:ravi-secret,Sriharsha Salaka:sri-secret",
+  IMREDLINE_REVIEWERS: "ravi:ravi-secret,Asha Rao:sri-secret",
   IMREDLINE_GITHUB_TOKEN: "ghp_test",
   IMREDLINE_GITHUB_REPO: "acme/site",
   IMREDLINE_SITE: "acme",

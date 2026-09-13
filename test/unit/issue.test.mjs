@@ -7,13 +7,13 @@ const draft = {
   type: "change",
   note: "The hero photo is cropped on the left.\nSecond line.",
   page: "www.example.com/rooms",
-  reviewer: "Sriharsha Salaka",
+  reviewer: "Asha Rao",
   selector: "section#hero > h1",
   viewport: "390x844 @3x",
   device: { kind: "phone", orientation: "portrait", touch: true },
-  shotPath: "shots/2026-09-13T10-00-00-000Z-Sriharsha-Salaka.jpg",
+  shotPath: "shots/2026-09-13T10-00-00-000Z-Asha-Rao.jpg",
   shotNote: "the shot is the surrounding <section>, not the pinned element alone; the red box marks what was pinned",
-  samples: [{ name: 'Ref "photo".png', path: "samples/2026-09-13T10-00-00-000Z-Sriharsha-Salaka-1.jpg" }],
+  samples: [{ name: 'Ref "photo".png', path: "samples/2026-09-13T10-00-00-000Z-Asha-Rao-1.jpg" }],
   links: [
     { kind: "link", value: "https://example.com/inspiration?x=1" },
     { kind: "path", value: "/Users/rishi/Pictures/hero ``` tricky.png" },
@@ -37,7 +37,7 @@ test("formatIssue → parseIssue round-trips every field", () => {
     labels: [{ name: "tester-feedback" }, { name: "pr-open" }],
   });
   assert.equal(row.type, "change");
-  assert.equal(row.reviewer, "Sriharsha Salaka");
+  assert.equal(row.reviewer, "Asha Rao");
   assert.equal(row.page, "www.example.com/rooms");
   assert.equal(row.element, "section#hero > h1");
   assert.equal(row.viewport, "390x844 @3x");

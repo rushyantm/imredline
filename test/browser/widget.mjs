@@ -194,7 +194,7 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
   await page.waitForSelector(".imq-card");
   check("queue: bare URL works after the token visit", true);
   await page.click(".imq-manage");
-  await page.fill(".imq-mint input[maxlength='40']", "Sriharsha");
+  await page.fill(".imq-mint input[maxlength='40']", "Asha");
   await page.click(".imq-mint button[type=submit]");
   await page.waitForSelector(".imq-fresh code");
   const link = await page.locator(".imq-fresh code").textContent();

@@ -99,7 +99,7 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 
 <details><summary>context</summary>
 
-- **reviewer:** Sriharsha
+- **reviewer:** Asha
 - **page:** `/rooms`
 - **element:** `section#rooms > img#room-img`
 - **viewport:** 390x844 @3x
@@ -107,7 +107,7 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 
 </details>
 
-📷 `shots/2026-09-13T10-00-00-000Z-Sriharsha.jpg` on `imredline-assets` — renders on the queue.
+📷 `shots/2026-09-13T10-00-00-000Z-Asha.jpg` on `imredline-assets` — renders on the queue.
 
 **Samples to guide this change**
 
@@ -147,3 +147,11 @@ npm run test:browser   # render-and-look in system Chrome: capture fixture (13) 
 ```
 
 The browser tests write pictures to `test/output/`. Open them. No unit test can tell a wrong screenshot from a right one.
+
+## Support and contributing
+
+Community-supported: no company, no SLA. Issues and pull requests are read when
+there is time. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run the tests,
+what is welcome, and what is frozen (the issue-body contract, the mount path,
+the env names). Security reports go through GitHub's private vulnerability
+reporting, not a public issue.

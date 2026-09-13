@@ -71,11 +71,11 @@ test("report: files the issue with shot, device and samples on the assets branch
   const issue = gh.state.issues[0];
   assert.deepEqual(issue.labels.map((l) => l.name), ["tester-feedback", "site:acme"]);
   assert.ok(issue.title.startsWith("[bug] /book — The booking button"));
-  assert.ok(issue.body.includes("- **reviewer:** Sriharsha Salaka"));
+  assert.ok(issue.body.includes("- **reviewer:** Asha Rao"));
   assert.ok(issue.body.includes("- **viewport:** 390x844 @3x"));
   assert.ok(issue.body.includes("- **device:** phone · portrait · touch"));
-  assert.match(issue.body, /📷 `shots\/[0-9TZ-]+-Sriharsha-Salaka\.png` on `imredline-assets`/);
-  assert.match(issue.body, /🖼 `samples\/[0-9TZ-]+-Sriharsha-Salaka-1\.png`/);
+  assert.match(issue.body, /📷 `shots\/[0-9TZ-]+-Asha-Rao\.png` on `imredline-assets`/);
+  assert.match(issue.body, /🖼 `samples\/[0-9TZ-]+-Asha-Rao-1\.png`/);
   assert.ok(issue.body.includes("https://example.com/ref"));
   assert.ok(issue.body.includes("~/Desktop/ref.png"));
   assert.ok(gh.state.branches.has("imredline-assets"));

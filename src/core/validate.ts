@@ -41,7 +41,7 @@ export const clean = (raw: unknown, max: number): string =>
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Reviewer names appear in asset filenames. A space broke NN's path-jail
- *  forever ("Sriharsha Salaka" uploaded fine, then 400'd on every read). */
+ *  forever ("Asha Rao" uploaded fine, then 400'd on every read). */
 export function slug(name: string): string {
   return name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "reviewer";
 }

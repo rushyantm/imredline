@@ -10,7 +10,7 @@ const env = { ...TEST_ENV, IMREDLINE_DATA_DIR: mkdtempSync(join(tmpdir(), "imred
 
 test("admin and env reviewers resolve; garbage does not", async () => {
   assert.deepEqual(await resolveToken("admin-secret-token", env), { name: "rishi", admin: true, sites: [] });
-  assert.deepEqual(await resolveToken(" sri-secret ", env), { name: "Sriharsha Salaka", admin: false, sites: [] });
+  assert.deepEqual(await resolveToken(" sri-secret ", env), { name: "Asha Rao", admin: false, sites: [] });
   assert.equal(await resolveToken("nope", env), null);
   assert.equal(await resolveToken("", env), null);
   assert.equal(reviewerCount(env), 3);
