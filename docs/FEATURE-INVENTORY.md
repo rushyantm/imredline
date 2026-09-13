@@ -228,7 +228,9 @@ NN's capture engine + Aradea's canvas marker and background capture (form maskin
 
 1. ~~Report types~~ — **decided: Bug / Change / Idea**, default Change.
 2. ~~Statuses~~ — **decided 13 Sept: Open / Done.**
-3. **When GitHub is down.** Under GitHub-only, a report can't be saved anywhere. v1 = clear error, draft kept in the dialog, reviewer retries (NN today). Aradea's queued-and-never-lost behaviour returns only with the database store (v2). Accept for v1?
+3. ~~When GitHub is down~~ — **decided 13 Sept: v1 = clear error, draft kept in the dialog, reviewer retries.** Queued-and-never-lost returns with a database store in v2.
+
+All §4 decisions are closed. Step 2 builds against this document.
 
 ## 5. Not verified
 
