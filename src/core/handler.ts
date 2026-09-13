@@ -47,7 +47,15 @@ export type HandlerOptions = {
   fetch?: Fetch;
   /** Called after a report is filed — a hook for a site to notify anything. */
   onReport?: (row: { number: number; url: string; reviewer: string; page: string }) => void;
+  /** Bring your own token source — consulted AFTER the admin token, the env
+   *  list and the minted-links file. A site that already keeps reviewer
+   *  tokens somewhere (EIPL's Postgres table with a careers role) plugs it in
+   *  here, so those links arm the widget and set the same cookie the site's
+   *  own admin pages read. Return null for "not one of mine". */
+  resolveToken?: (token: string) => Promise<ExtraAccess | null>;
 };
+
+export type ExtraAccess = { name: string; admin?: boolean; sites?: string[] };
 
 const json = (data: unknown, status = 200, headers: Record<string, string> = {}, cookies: string[] = []) => {
   const h = new Headers({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers });
@@ -111,8 +119,18 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
 
   const cookieToken = cookieValue(req.headers.get("cookie"), TOKEN_COOKIE);
   const queryToken = url.searchParams.get("token");
+  const resolve = async (t: string | null | undefined): Promise<Access | null> => {
+    const own = await resolveToken(t, env);
+    if (own || !opts.resolveToken || !t || t.length > 200) return own;
+    try {
+      const extra = await opts.resolveToken(t.trim());
+      return extra ? { name: String(extra.name).slice(0, 40) || "reviewer", admin: Boolean(extra.admin), sites: extra.sites ?? [] } : null;
+    } catch {
+      return null;
+    }
+  };
   const who = async (bodyToken?: string): Promise<Access | null> =>
-    (await resolveToken(cookieToken, env)) ?? (await resolveToken(bodyToken, env)) ?? (await resolveToken(queryToken, env));
+    (await resolve(cookieToken)) ?? (await resolve(bodyToken)) ?? (await resolve(queryToken));
   const isAdmin = async () => Boolean((await who())?.admin) || Boolean(queryToken && c.adminToken && sameSecret(queryToken, c.adminToken));
   const readJson = async () => {
     try {
@@ -129,7 +147,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
         if (limited(`session:${ipOf(req)}`, 30)) return json({ error: "Too many attempts. Try again later." }, 429, cors);
         const body = await readJson();
         const token = typeof body?.token === "string" ? body.token : "";
-        const access = await resolveToken(token, env);
+        const access = await resolve(token);
         if (!access) {
           return json({ error: "That review link is no longer valid — ask for a new one." }, 401, cors, crossOrigin ? [] : clearCookies(env));
         }

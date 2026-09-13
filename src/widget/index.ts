@@ -43,7 +43,9 @@ declare global {
   const BASE = (me?.dataset.base || (src ? src.pathname.replace(/\/widget\.js$/, "") : "/imredline")).replace(/\/+$/, "");
   const API = HOST + BASE + "/api";
   const CROSS = HOST !== location.origin;
-  const PARAM = me?.dataset.param || "imredline";
+  /* Comma list, first is canonical. A site migrating from an older widget
+     keeps its testers' existing `?review=` links alive by listing it too. */
+  const PARAMS = (me?.dataset.param || "imredline").split(",").map((s) => s.trim()).filter(Boolean);
   const KEY = "imredline_token";
   const HINT = "imredline_on=1";
 
@@ -760,11 +762,12 @@ declare global {
   }
   function boot() {
     const url = new URL(location.href);
-    const fromUrl = url.searchParams.get(PARAM);
-    if (fromUrl) {
+    const param = PARAMS.find((p) => url.searchParams.get(p));
+    const fromUrl = param ? url.searchParams.get(param) : null;
+    if (fromUrl && param) {
       /* Strip the token from the address bar immediately — valid or not, it
          must not survive into a shared link, a bookmark or a screenshot. */
-      url.searchParams.delete(PARAM);
+      url.searchParams.delete(param);
       history.replaceState({}, "", url.pathname + url.search + url.hash);
       void validate(fromUrl, true);
       return;

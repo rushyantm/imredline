@@ -11,6 +11,7 @@
 */
 
 import { handle, type HandlerOptions } from "../core/handler.js";
+export type { HandlerOptions, ExtraAccess } from "../core/handler.js";
 
 type RouteHandler = (req: Request) => Promise<Response>;
 

@@ -183,3 +183,19 @@ test("without GitHub vars every write is a loud 503", async () => {
   );
   assert.equal(res.status, 503);
 });
+
+test("a bring-your-own token source arms a browser and files, after the built-ins", async () => {
+  const extra = { env, fetch: gh.fetch, resolveToken: async (t) => (t === "db-careers-token" ? { name: "Hiring Team" } : null) };
+  const ok = await handle(new Request(ORIGIN + "/imredline/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: "db-careers-token" }) }), extra);
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).name, "Hiring Team");
+  assert.ok(cookieOf(ok).includes("imredline=db-careers-token"));
+  const no = await handle(new Request(ORIGIN + "/imredline/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: "unknown" }) }), extra);
+  assert.equal(no.status, 401);
+  const filed = await handle(new Request(ORIGIN + "/imredline/api/report", { method: "POST", headers: { "Content-Type": "application/json", cookie: "imredline=db-careers-token" }, body: JSON.stringify(report({ requestId: "aaaaaaaa-bbbb-4ccc-8ddd-000000000007", samples: [] })) }), extra);
+  assert.equal(filed.status, 201);
+  assert.ok(gh.state.issues.at(-1).body.includes("- **reviewer:** Hiring Team"));
+  /* built-ins still win: the admin token stays admin even if the extra source would also answer */
+  const adm = await handle(new Request(ORIGIN + "/imredline/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: "admin-secret-token" }) }), { ...extra, resolveToken: async () => ({ name: "impostor" }) });
+  assert.equal((await adm.json()).admin, true);
+});
