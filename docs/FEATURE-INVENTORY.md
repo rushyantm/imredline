@@ -87,7 +87,7 @@ The valuable part, and the part with the most scar tissue. **NN's engine is the 
 
 | Feature | Best copy | Evidence | v1 |
 |---|---|---|---|
-| Types: Bug / Fix / Copy / Idea with a one-line hint each | all | `ReviewMode.tsx:32-37`, `review.js:7` | Keep. Aradea also has Content / Design / Missing information — **Ask** (see §4) |
+| Types: Bug / Fix / Copy / Idea with a one-line hint each | all | `ReviewMode.tsx:32-37`, `review.js:7` | **Change → three: Bug / Change / Idea** (owner ruling 13 Sept: the type's only real reader is a human scanning the queue, and three = the three things you do next). Old `[fix]`/`[copy]` title prefixes on existing issues are read as Change |
 | **Default type is Fix**, not Bug — fixes outnumbered bugs 3:1 on EIPL and the default is what an untouched report files as | NN | `ReviewMode.tsx:117-119` | Keep |
 | Note required; 8-char minimum (Aradea) / 2000-char max (NN) / 4000 (Aradea) | — | `review.js:14`, `route.ts:21` | **Merge**: min 8, max 4000 |
 | ⌘/Ctrl-Enter sends; Esc cancels at any state | NN | `ReviewMode.tsx:661-663, 208-219` | Keep |
@@ -225,7 +225,7 @@ NN's capture engine + Aradea's canvas marker and background capture (form maskin
 
 ## 4. Decisions still open — one at a time, after sign-off
 
-1. **Report types.** NN: Bug/Fix/Copy/Idea. Aradea adds Content/Design/Missing information. Four or seven?
+1. ~~Report types~~ — **decided: Bug / Change / Idea**, default Change.
 2. **Statuses.** NN: open/done (two; a third was offered on EIPL and used 0 times in 48 reports). Aradea: open/in-progress/needs-decision/resolved. On GitHub the extra two would be labels. Two or four?
 3. **When GitHub is down.** Under GitHub-only, a report can't be saved anywhere. v1 = clear error, draft kept in the dialog, reviewer retries (NN today). Aradea's queued-and-never-lost behaviour returns only with the database store (v2). Accept for v1?
 
