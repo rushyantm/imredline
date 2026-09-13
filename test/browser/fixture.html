@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IMRedline capture fixture</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; color: #1a1a1a; background: #f6f3ee; }
+  header.site-head { display: flex; align-items: center; gap: 24px; padding: 14px 32px; background: #1c2b26; color: #fff; }
+  header.site-head .logo { width: 89px; height: 12px; background: #c9b27a; }
+  header.site-head nav a { color: #fff; margin-right: 18px; text-decoration: none; }
+  section { padding: 48px 32px; }
+  .hero { background: #e9dfd0; min-height: 420px; }
+  .hero h1 { font-size: 48px; margin: 0 0 12px; }
+  .rooms { background: #fff; }
+  .rooms .frame { width: 360px; height: 220px; overflow: clip; border-radius: 12px; }
+  .rooms .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .book { background: #f0ebe3; }
+  .book label { display: block; margin: 10px 0 4px; font-size: 13px; }
+  .book input, .book textarea, .book select { width: 320px; padding: 8px; border: 1px solid #999; border-radius: 6px; font: inherit; }
+  .stack { position: relative; width: 400px; height: 260px; }
+  .stack > div { position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px; color: #fff; border-radius: 12px; }
+  .runway { height: 7000px; background: linear-gradient(#dfe7e2, #b9c9c0); }
+  .runway .stage { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; }
+  .runway .panel { padding: 40px 60px; background: #1c2b26; color: #fff; font-size: 32px; border-radius: 16px; }
+  .price { font-weight: 600; }
+  footer { padding: 32px; background: #1c2b26; color: #ddd; }
+</style>
+</head>
+<body>
+<header class="site-head" id="site-head">
+  <div class="logo" id="logo" aria-label="logo"></div>
+  <nav><a href="#" id="nav-rooms">Rooms</a><a href="#" id="nav-book">Book</a><a href="#">Visit</a></nav>
+</header>
+
+<section class="hero" id="hero">
+  <h1 id="hero-title">Make room for life</h1>
+  <p>A quiet place to think, eat well and sleep better.</p>
+</section>
+
+<section class="rooms" id="rooms">
+  <h2>Rooms</h2>
+  <div class="frame"><img id="room-img" alt="room" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='720' height='440'><rect width='720' height='440' fill='%237a9a86'/><circle cx='520' cy='140' r='90' fill='%23e8c96d'/><rect x='60' y='300' width='600' height='80' fill='%23c9b27a'/></svg>"></div>
+  <p>Room rate: <span class="price" data-imredline-private id="secret-price">$799 / night</span> — this span must never appear in a picture.</p>
+</section>
+
+<section class="book" id="book">
+  <h2>Book a tour</h2>
+  <form>
+    <label>Name</label><input id="f-name" value="Typed Name">
+    <label>Phone</label><input id="f-phone" value="+1 555 0100">
+    <label>Preference</label><select id="f-pref"><option>Window seat</option></select>
+    <label>Anything we should know?</label><textarea id="f-note">typed note here</textarea>
+  </form>
+</section>
+
+<section id="gallery">
+  <h2>Gallery (stacked, scroll-faded)</h2>
+  <div class="stack" data-imredline-stack id="stack">
+    <div style="background:#7a9a86;opacity:1">ONE</div>
+    <div style="background:#c9b27a;opacity:1">TWO — visible</div>
+    <div style="background:#b3261e;opacity:0" id="stack-top">THREE (transparent, on top)</div>
+  </div>
+</section>
+
+<section class="runway" id="runway">
+  <div class="stage" data-imredline-frame id="stage">
+    <div class="panel" id="panel">Sticky panel in a 7000px runway</div>
+  </div>
+</section>
+
+<footer id="foot">© fixture</footer>
+</body>
+</html>

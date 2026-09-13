@@ -1,0 +1,30 @@
+{
+  "name": "imredline",
+  "version": "0.1.0",
+  "description": "Point at anything on a live website, say what's wrong, and it lands as a GitHub issue — screenshot, pinned element, attachments and all — for humans and AI agents to fix.",
+  "license": "MIT",
+  "author": "Rushyant Mulpuri",
+  "repository": "github:rushyantm/imredline",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "exports": {
+    "./capture": {
+      "types": "./dist/capture/index.d.ts",
+      "default": "./dist/capture/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "node --test test/unit/",
+    "test:browser": "node test/browser/capture.mjs"
+  },
+  "dependencies": {
+    "html2canvas-pro": "^2.3.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
