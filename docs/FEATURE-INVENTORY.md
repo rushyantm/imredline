@@ -69,7 +69,7 @@ The valuable part, and the part with the most scar tissue. **NN's engine is the 
 | Scale budgets the **area** (~1.26 MP), not the long edge — a wide monitor produced several times the pixels of a laptop | NN, Aradea | `ReviewMode.tsx:423-428`, `review.js:28` | Keep |
 | Walk up for the first real background so a subtree doesn't flatten to black | NN, Aradea | `ReviewMode.tsx:430-436`, `review.js:22` | Keep |
 | **Red marker: stroke it on the canvas after capture, not a DOM node before** — a DOM marker drifts, `outline` and `inset box-shadow` photograph as nothing | Aradea (canvas) vs NN (DOM node) | `review.js:38-40` vs `ReviewMode.tsx:301-350` | **Merge → Aradea's canvas stroke**, with NN's white halo behind the red so it reads on any background (`review.js:40` already does 7px white + 3px red) |
-| **Mask every form field in the clone** — `input, textarea, select, [contenteditable], [data-review-private]` blanked, greyed, placeholder removed. Runs FIRST in `onclone`, before any early return | NN (after `9ef87e3`), Aradea | `ReviewMode.tsx:469-498`, `review.js:30-35` | Keep — the privacy floor, renamed `data-imredline-private` |
+| Mask every form field in the clone — `input, textarea, select, [contenteditable]` blanked, greyed, placeholder removed. Runs FIRST in `onclone`, before any early return | NN (after `9ef87e3`), Aradea | `ReviewMode.tsx:469-498`, `review.js:30-35` | **Change → a switch, OFF by default** (owner ruling 13 Sept: testers report form bugs, and masking hides the very thing they're reporting). `IMREDLINE_MASK_FORMS=1` turns it on for a site with strangers' data. Elements tagged `data-imredline-private` are always blanked, switch or not |
 | Bake live computed opacity/transform of scroll-driven animations into the clone, then switch animation off (the clone doesn't run `animation-timeline`) | NN | `ReviewMode.tsx:459-512` | Keep, but generalised: NN also force-includes `.seq__thumb, .seq__panel, .seq__tick`; v1 keys on `animation-name !== none` plus `data-imredline-animated` |
 | Aradea's blunter version: inject `* { animation:none; transition:none; caret-color:transparent }` | Aradea | `review.js:36` | **Merge** as the fallback when the live/clone trees don't pair up (NN returns early there) |
 | Ignore the widget's own chrome in the capture | all | `ReviewMode.tsx:454-458`, `review.js:29` | Keep |
@@ -196,7 +196,7 @@ The one mode that lets IMRedline review a site it isn't installed on — **which
 
 | Feature | Evidence | v1 |
 |---|---|---|
-| Form masking in the clone (see §C) | | Keep |
+| Form masking in the clone (see §C) | | Off by default; `IMREDLINE_MASK_FORMS=1`; `data-imredline-private` always honoured |
 | Constant-time token compare on hashed digests; a brute-force attempt is logged, the value never is | NN `review.ts:62-79`, `review-access.ts:53-62` | Keep |
 | Token never in the URL after arrival; `?token=` on the queue kept only for old bookmarks | NN `ReviewMode.tsx:136-149` | Keep |
 | Screenshot proxy: `Cache-Control: private`, path-jail, mime by magic bytes | NN `shot/route.ts:23-57` | Keep |
@@ -217,10 +217,11 @@ The one mode that lets IMRedline review a site it isn't installed on — **which
 | `IMREDLINE_SITE` | Aradea `SITE_BRAND` | Label + title prefix for multi-site queues |
 | `IMREDLINE_ORIGINS` | PEMA `LIVE_ORIGINS` | Comma list of third-party origins allowed to post (§J). Empty = same-origin only |
 | `IMREDLINE_DATA_DIR` | new | Where minted reviewer links (hashes) live when there is no database |
+| `IMREDLINE_MASK_FORMS` | new | `1` blanks form fields in screenshots. Default off — testers need to see what they typed |
 
 ## 3. What v1 is, in one paragraph
 
-NN's capture engine + Aradea's masking, canvas marker and background capture + Aradea's attachments + NN's GitHub store, queue and bot-label chips + PEMA's third-party-site mode + reviewer minting with expiry and site scope, in one package that mounts at `/_imredline/…` on Next.js and plain Node.
+NN's capture engine + Aradea's canvas marker and background capture (form masking available as an off-by-default switch) + Aradea's attachments + NN's GitHub store, queue and bot-label chips + PEMA's third-party-site mode + reviewer minting with expiry and site scope, in one package that mounts at `/_imredline/…` on Next.js and plain Node.
 
 ## 4. Decisions still open — one at a time, after sign-off
 
