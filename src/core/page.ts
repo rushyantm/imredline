@@ -4,8 +4,14 @@
   ?token=). Internal tool: flat styling, noindex, no site chrome.
 */
 
-export function queuePage(base: string): string {
+/** `nonce`: a site running a nonce-based CSP (strict-dynamic) passes the
+ *  request's nonce so the queue script is allowed once the policy is enforced.
+ *  The handler reads it from an `x-nonce` request header — the convention a
+ *  Next.js proxy uses to hand its per-request nonce to the layout. */
+export function queuePage(base: string, nonce = ""): string {
   const b = base.replace(/"/g, "");
+  const n = nonce.replace(/[^A-Za-z0-9+/=_-]/g, "");
+  const nonceAttr = n ? ` nonce="${n}"` : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -13,7 +19,7 @@ export function queuePage(base: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Review queue — IMRedline</title>
-<style>
+<style${nonceAttr}>
   :root { color-scheme: light; }
   body { margin: 0; background: #fff; color: #0c0d0d; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
   .imq-wrap { max-width: 920px; margin: 0 auto; padding: 48px 20px 96px; }
@@ -74,7 +80,7 @@ export function queuePage(base: string): string {
 </head>
 <body>
 <div class="imq-wrap" id="imq" data-base="${b}"><h1>Review queue</h1><p class="imq-sub">Loading…</p></div>
-<script src="${b}/queue.js"></script>
+<script src="${b}/queue.js"${nonceAttr}></script>
 </body>
 </html>`;
 }

@@ -104,7 +104,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
     });
   }
   if (method === "GET" && (path === "/" || path === "/queue")) {
-    return new Response(queuePage(c.base), {
+    return new Response(queuePage(c.base, req.headers.get("x-nonce") || ""), {
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
     });
   }
