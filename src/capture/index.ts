@@ -67,7 +67,8 @@ async function defaultLoad(): Promise<Html2Canvas> {
 }
 
 export async function capture(pinned: Element | null, options: CaptureOptions = {}): Promise<CaptureResult> {
-  const el = pinned instanceof HTMLElement && pinned.isConnected ? pinned : null;
+  // Any Element — an <svg> icon is a legitimate pin; frame.ts finds it an HTML host.
+  const el = pinned instanceof Element && pinned.isConnected ? pinned : null;
   const frame = pickFrame(el, options);
   const fr = frame.getBoundingClientRect();
   const er = el?.getBoundingClientRect() ?? null;

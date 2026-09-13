@@ -119,6 +119,10 @@ await shoot("10-nothing-pinned", null, {}, { frame: "body", pin: "none", note: f
 const r11 = await page.evaluate(() => window.__run("#hero", { timeoutMs: 1 }));
 check("11-timeout: fails with a message", r11.dataUrl === null && /too long/.test(r11.error), r11.error);
 
+// 13. An <svg> icon pinned: not an HTMLElement, but a real pin. Frame = header, box on the icon.
+await page.evaluate(() => window.scrollTo(0, 0));
+await shoot("13-svg-icon", "#icon-svg", {}, { frame: "header", pin: "some", note: true });
+
 // 12. selectorFor escapes and disambiguates.
 const sel = await page.evaluate(() => window.__cap.selectorFor(document.querySelector("#nav-book")));
 check("12-selector: id form", sel === "a#nav-book", sel);

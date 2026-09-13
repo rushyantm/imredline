@@ -41,6 +41,17 @@ export function bigEnough(el: Element, o: Required<FrameOptions>): boolean {
   return r.width >= o.minWidth && r.height >= o.minHeight && r.width * r.height >= o.minArea;
 }
 
+/** The element itself if it is HTML, else its nearest HTML ancestor. An
+ *  <svg> or <path> is a legitimate pin (icons are clicked constantly) but not
+ *  something html2canvas can be handed as a root. Nutrition Nest's old engine
+ *  checked `instanceof HTMLElement` and silently dropped the pin — a footer
+ *  icon photographed the whole page (found 2026-09-13). */
+function htmlHost(el: Element): HTMLElement {
+  let n: Element | null = el;
+  while (n && !(n instanceof HTMLElement)) n = n.parentElement;
+  return n ?? document.body;
+}
+
 export function pickFrame(el: Element | null, options: FrameOptions = {}): HTMLElement {
   const o: Required<FrameOptions> = {
     minWidth: options.minWidth ?? 240,
@@ -48,32 +59,34 @@ export function pickFrame(el: Element | null, options: FrameOptions = {}): HTMLE
     minArea: options.minArea ?? 120_000,
     ceiling: options.ceiling ?? 6000,
   };
-  if (!(el instanceof HTMLElement) || !el.isConnected) return document.body;
+  if (!(el instanceof Element) || !el.isConnected) return document.body;
 
   /* A site's sticky scroll-stage is a <div>, not a landmark, and its nearest
      landmark is <main> — so without the opt-in attribute the shot became the
      whole page and the panel the reviewer was looking at was lost in it. */
   const candidate: HTMLElement =
-    el.closest<HTMLElement>(`[${FRAME_ATTR}]`) ?? el.closest<HTMLElement>(LANDMARKS) ?? el;
+    el.closest<HTMLElement>(`[${FRAME_ATTR}]`) ?? el.closest<HTMLElement>(LANDMARKS) ?? htmlHost(el);
+  const under = (n: Element) => n.getBoundingClientRect().height <= o.ceiling;
   let target = candidate;
+  /* The largest ancestor seen so far that is NOT a runway. */
+  let lastUnder: HTMLElement | null = under(candidate) ? candidate : null;
 
   while (target !== document.body && !bigEnough(target, o)) {
     const up = target.parentElement;
     if (!up || up === document.documentElement) break;
     target = up;
+    if (under(target)) lastUnder = target;
   }
 
   /* The climb ran into a runway (a 7000px page, a scroll stage). Measured
      2026-09-13 in the fixture: a 40px site header fails the size rule, the
      climb reaches <body>, body is taller than the ceiling — and falling back
      to the ELEMENT re-creates the 89×12 logo shot this whole rule exists to
-     prevent. So prefer the landmark the climb started from when it is not a
-     runway itself; only when the landmark IS the runway does the element win
-     (Aradea's rule). */
-  if (target.getBoundingClientRect().height > o.ceiling) {
-    if (candidate !== target && candidate.getBoundingClientRect().height <= o.ceiling) return candidate;
-    return el;
-  }
+     prevent. So return the largest ancestor that is still under the ceiling
+     (an icon inside <nav> inside <header> gets the header, not an 18px nav
+     strip); only when nothing under the ceiling was seen does the element
+     itself win (Aradea's rule for a pinned runway). */
+  if (!under(target)) return lastUnder ?? htmlHost(el);
   return target;
 }
 
