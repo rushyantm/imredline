@@ -53,6 +53,7 @@ Three of six run capture code already proven wrong (EIPL, PEMA ×2). Five of six
 | Focus-in outlines the focused element (screen-reader path) | Aradea | `review.js:124` | Keep |
 | Short CSS path for the pinned element — breadcrumb, not a locator | NN, Aradea | `ReviewMode.tsx:79-98`; Aradea adds `:nth-of-type` and `CSS.escape`, `review.js:12` | **Merge**: Aradea's is safer (escaped, disambiguated) |
 | Pin position, scroll and viewport frozen at pin time, not send time (phone keyboard shrinks the viewport) | NN | `ReviewMode.tsx:104-115` | Keep |
+| **Device class on every report — phone / tablet / desktop** (owner ask 13 Sept). No copy does this today; NN stores only `viewport: WxH` (`ReviewMode.tsx:334`, `review.ts:165`) and the fixer has to guess | — (new) | `capture` already returns `viewport {width,height,dpr}` | **Add, automatic.** Classify from `(pointer: coarse)` + `navigator.maxTouchPoints` + viewport width (< 768 phone, 768–1024 tablet, else desktop) + `navigator.userAgentData.mobile` when present; add `orientation`. Shown as a chip in the dialog; one tap flips it if the guess is wrong. Written as a new `**device:**` field in the issue body (additive — the body contract is untouched) |
 | Pin recorded as a **fraction of the frame** (0–1), not pixels, so it survives re-rendering | Aradea | `review.js:23` | Keep |
 | Site can mark its own scroll-stage as the frame with `data-review-frame` | NN | `ReviewMode.tsx:405-412` | Keep, renamed `data-imredline-frame` |
 | Review UI is never pickable (`data-review-ui` / id check) | all | `review.js:6` | Keep |
@@ -141,7 +142,7 @@ The valuable part, and the part with the most scar tissue. **NN's engine is the 
 | Screenshot thumbnails proxied through the server with the PAT (private repo won't serve to an `<img>`), path-jailed, bytes sniffed for mime | NN | `shot/route.ts` | Keep |
 | Click a thumbnail to zoom | NN | `ReviewQueue.tsx:51, 156-161` | Keep |
 | **Open first**, newest first within status | NN | `page.tsx:172-176` | Keep |
-| Two statuses: open / done = issue open / closed. One call, nothing can half-apply | NN | `[number]/route.ts:1-14` | Keep. Aradea has four — **Ask** (§4) |
+| Two statuses: open / done = issue open / closed. One call, nothing can half-apply | NN | `[number]/route.ts:1-14` | Keep — **two: Open / Done** (owner ruling 13 Sept). Progress is shown by the bot's own labels, never hand-set |
 | Done / Reopen writes to GitHub; a rejected write leaves the row unchanged and says why | NN | `ReviewQueue.tsx:57-77` | Keep |
 | Bot lifecycle chips read from the bot's own labels: `implement-failed` (needs a human, checked first), `deployed`, `merged`, `pr-open`, `plan-approved`, `triaged:skip`, `triaged:ok` | NN | `page.tsx:31-43, 66-70` | Keep |
 | Linked PR per report (from issue titles `(feedback #N)`), with open/merged/closed state — fetched via the **issues** endpoint, not `/pulls`, because fine-grained PATs treat Pull requests as a separate permission | NN | `page.tsx:123-166` | Keep — the comment at `page.tsx:126-132` is load-bearing |
@@ -226,7 +227,7 @@ NN's capture engine + Aradea's canvas marker and background capture (form maskin
 ## 4. Decisions still open — one at a time, after sign-off
 
 1. ~~Report types~~ — **decided: Bug / Change / Idea**, default Change.
-2. **Statuses.** NN: open/done (two; a third was offered on EIPL and used 0 times in 48 reports). Aradea: open/in-progress/needs-decision/resolved. On GitHub the extra two would be labels. Two or four?
+2. ~~Statuses~~ — **decided 13 Sept: Open / Done.**
 3. **When GitHub is down.** Under GitHub-only, a report can't be saved anywhere. v1 = clear error, draft kept in the dialog, reviewer retries (NN today). Aradea's queued-and-never-lost behaviour returns only with the database store (v2). Accept for v1?
 
 ## 5. Not verified
@@ -234,3 +235,7 @@ NN's capture engine + Aradea's canvas marker and background capture (form maskin
 - GateKeeper's `prototype/feedback-widget.js` was located, not read; its features are taken from memory (Phase A: screenshot + Telegram photo, canvas-stroked marker). It contributes nothing v1 needs.
 - preserve-rec-skill's `feedback-schema.ts` (60 lines) was not read; its `ReviewerMode.tsx` header was.
 - No line numbers were verified for PEMA's in-app `ReviewMode.tsx` beyond the diff against NN; it is the old EIPL engine with `fb-` class names.
+
+## 6. Parked — not v1
+
+- **Native iOS / Android apps.** IMRedline is a web tool: it needs a DOM to pin an element and html2canvas to photograph it. A native app has neither. That is a separate product (a Swift / Kotlin / React Native SDK that screenshots via the OS and posts to the same GitHub issue format). Owner note 13 Sept: keep in mind, build nothing yet. The one thing to protect now is the issue-body format, so a future native SDK can file into the same queue.
