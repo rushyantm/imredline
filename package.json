@@ -1,30 +1,51 @@
 {
   "name": "imredline",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Point at anything on a live website, say what's wrong, and it lands as a GitHub issue — screenshot, pinned element, attachments and all — for humans and AI agents to fix.",
   "license": "MIT",
   "author": "Rushyant Mulpuri",
   "repository": "github:rushyantm/imredline",
   "type": "module",
   "private": true,
-  "engines": { "node": ">=20" },
-  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
     "./capture": {
       "types": "./dist/capture/index.d.ts",
       "default": "./dist/capture/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./next": {
+      "types": "./dist/adapters/next.d.ts",
+      "default": "./dist/adapters/next.js"
+    },
+    "./node": {
+      "types": "./dist/adapters/node.d.ts",
+      "default": "./dist/adapters/node.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/build.mjs",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test:unit": "node --test test/unit/",
-    "test:browser": "node test/browser/capture.mjs"
+    "test": "npm run build && npm run test:unit && npm run test:browser",
+    "test:unit": "node --test test/unit/*.test.mjs",
+    "test:browser": "node test/browser/capture.mjs && node test/browser/widget.mjs"
   },
   "dependencies": {
     "html2canvas-pro": "^2.3.9"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
+    "esbuild": "^0.24.2",
     "typescript": "^5.6.0"
   }
 }
