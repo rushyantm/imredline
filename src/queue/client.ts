@@ -3,9 +3,11 @@
   Done/Reopen straight on GitHub (a rejected write leaves the row unchanged
   and says why), and manages reviewer links.
 
-  Auth: the admin cookie, or ?token= on the URL (an old bookmark). A ?token=
-  also arms this browser through the session route so the next visit needs
-  nothing.
+  Auth: any reviewer cookie, or ?token= on the URL. A ?token= also arms this
+  browser through the session route so the next visit needs nothing. A plain
+  reviewer gets the list and the pictures READ-ONLY: status as a chip, no
+  Done/Reopen, no reviewer panel. The server enforces that; this file only
+  hides what would fail.
 */
 
 import type { QueueRow } from "../core/types.js";
@@ -50,6 +52,7 @@ type Reviewer = {
 
   let rows: QueueRow[] = [];
   let repo = "";
+  let admin = false;
   const filter = { status: "open", type: "", q: "" };
 
   function gate(msg: string) {
@@ -122,19 +125,21 @@ type Reviewer = {
     }
 
     const actions = h("div", "imq-actions");
-    const btn = h("button", "imq-status" + (r.status === "done" ? " is-done" : ""), r.status === "done" ? "Reopen" : "Done") as HTMLButtonElement;
-    btn.type = "button";
-    btn.onclick = async () => {
-      btn.disabled = true;
-      const next = r.status === "done" ? "open" : "done";
-      const { res, data } = await api(`/report/${r.number}`, { method: "PATCH", json: { status: next } });
-      btn.disabled = false;
-      if (res.ok) {
-        r.status = next;
-        render();
-      } else setError(`#${r.number}: ${data.error || res.status} — row unchanged.`);
-    };
-    actions.append(btn);
+    if (admin) {
+      const btn = h("button", "imq-status" + (r.status === "done" ? " is-done" : ""), r.status === "done" ? "Reopen" : "Done") as HTMLButtonElement;
+      btn.type = "button";
+      btn.onclick = async () => {
+        btn.disabled = true;
+        const next = r.status === "done" ? "open" : "done";
+        const { res, data } = await api(`/report/${r.number}`, { method: "PATCH", json: { status: next } });
+        btn.disabled = false;
+        if (res.ok) {
+          r.status = next;
+          render();
+        } else setError(`#${r.number}: ${data.error || res.status} — row unchanged.`);
+      };
+      actions.append(btn);
+    } else actions.append(h("span", "imq-chip imq-chip--" + (r.status === "done" ? "good" : "plain"), r.status));
     if (r.bot) actions.append(h("span", `imq-chip imq-chip--${r.bot.tone}`, r.bot.text));
     if (r.pr) {
       const a = h("a", "imq-pr", `PR #${r.pr.number} · ${r.pr.state}`) as HTMLAnchorElement;
@@ -164,7 +169,7 @@ type Reviewer = {
         (!filter.type || r.type === filter.type) &&
         (!filter.q || `${r.note} ${r.page} ${r.reviewer} ${r.element || ""} #${r.number}`.toLowerCase().includes(filter.q)),
     );
-    subEl.textContent = `${rows.filter((r) => r.status === "open").length} open of ${rows.length}. Done writes straight to GitHub; the grey chip is what the auto-fix bot has done with it.`;
+    subEl.textContent = `${rows.filter((r) => r.status === "open").length} open of ${rows.length}. ${admin ? "Done writes straight to GitHub; the grey chip is what the auto-fix bot has done with it." : "The grey chip is how far each report has got."}`;
     listEl.replaceChildren(...(shown.length ? shown.map(card) : [h("p", "imq-empty", rows.length ? "Nothing matches this filter." : "No reports yet.")]));
   }
 
@@ -284,14 +289,15 @@ type Reviewer = {
     /* A ?token= arms this browser so the bare URL works next time. */
     if (token) await api("/session", { method: "POST", json: { token } }).catch(() => undefined);
     const { res, data } = await api("/queue");
-    if (res.status === 401) return gate("Not available without an admin token. Open this page with ?token=<your admin token> once; after that the bare address works in this browser.");
+    if (res.status === 401) return gate("Open this page with your review link once (or with ?token=<your token>); after that the bare address works in this browser.");
     root!.replaceChildren();
     root!.append(h("h1", undefined, "Review queue"));
     subEl = h("p", "imq-sub");
     root!.append(subEl);
+    admin = Boolean(data.admin);
     if (!res.ok) {
       subEl.textContent = String(data.error || `GitHub returned ${res.status}.`);
-      root!.append(adminPanel());
+      if (admin) root!.append(adminPanel());
       return;
     }
     rows = data.rows as QueueRow[];
@@ -345,7 +351,7 @@ type Reviewer = {
     listEl = h("div", "imq-list");
     root!.append(listEl);
     render();
-    root!.append(adminPanel());
+    if (admin) root!.append(adminPanel());
   }
   void boot();
 })();

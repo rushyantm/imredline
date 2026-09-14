@@ -10,8 +10,8 @@
     DELETE <base>/api/session                             sign out
     POST   <base>/api/report                              file a report
     PATCH  <base>/api/report/<n>  {status}                admin: open/done
-    GET    <base>/api/queue                               admin: rows as JSON
-    GET    <base>/api/asset?path=shots/x.jpg              admin: image proxy
+    GET    <base>/api/queue                               reviewer: rows as JSON (read-only unless admin)
+    GET    <base>/api/asset?path=shots/x.jpg              reviewer: image proxy
     GET/POST/DELETE <base>/api/reviewers                  admin: mint/revoke
     OPTIONS *                                             CORS preflight
 
@@ -131,7 +131,6 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
   };
   const who = async (bodyToken?: string): Promise<Access | null> =>
     (await resolve(cookieToken)) ?? (await resolve(bodyToken)) ?? (await resolve(queryToken));
-  const isAdmin = async () => Boolean((await who())?.admin) || Boolean(queryToken && c.adminToken && sameSecret(queryToken, c.adminToken));
   const readJson = async () => {
     try {
       return (await req.json()) as Record<string, unknown>;
@@ -249,29 +248,22 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       );
     }
 
-    /* ── everything below is admin-only, same-origin ── */
-    if (!(await isAdmin())) {
+    /* ── everything below needs a signed-in reviewer, same-origin.
+       Reading the queue and its pictures is for ANY reviewer — someone who
+       files reports deserves to see where they went. Everything that WRITES
+       (Done/Reopen, mint, revoke) stays admin-only, further down. ── */
+    const me = await who();
+    const admin = Boolean(me?.admin) || Boolean(queryToken && c.adminToken && sameSecret(queryToken, c.adminToken));
+    if (!me && !admin) {
       if (path.startsWith("/api/")) return json({ error: "Not authorised." }, 401);
       return null;
     }
 
-    if (path.startsWith("/api/report/") && method === "PATCH") {
-      const num = path.slice("/api/report/".length);
-      if (!/^\d+$/.test(num)) return json({ error: "Bad issue." }, 400);
-      if (!githubReady(env)) return json({ error: "Not configured." }, 503);
-      const body = await readJson();
-      const status = String(body?.status || "");
-      if (!(STATUSES as readonly string[]).includes(status)) return json({ error: "Unknown status." }, 400);
-      /* One call. Open/closed IS the status; nothing can half-apply. */
-      const ok = await new GitHub(env, opts.fetch).setState(Number(num), status === "done" ? "closed" : "open");
-      return ok ? json({ ok: true, status }) : json({ error: "GitHub refused the change — row unchanged." }, 502);
-    }
-
     if (path === "/api/queue" && method === "GET") {
-      if (!githubReady(env)) return json({ error: "GitHub isn't configured — set IMREDLINE_GITHUB_TOKEN and IMREDLINE_GITHUB_REPO.", rows: [] }, 503);
+      if (!githubReady(env)) return json({ error: "GitHub isn't configured — set IMREDLINE_GITHUB_TOKEN and IMREDLINE_GITHUB_REPO.", rows: [], admin }, 503);
       const gh = new GitHub(env, opts.fetch);
       const { reports, all, status } = await gh.listReports();
-      if (status !== 200) return json({ error: `GitHub returned ${status}, so the report list can't load.`, rows: [] }, 502);
+      if (status !== 200) return json({ error: `GitHub returned ${status}, so the report list can't load.`, rows: [], admin }, 502);
       const prs = all ? prsByReport(all) : new Map<number, QueueRow["pr"]>();
       const rows = reports.map((i) => parseIssue(i, prs)).sort((a, b) => (a.status === b.status ? 0 : a.status === "open" ? -1 : 1));
       const warnings: string[] = [];
@@ -279,7 +271,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       else if (all.length >= 100) warnings.push("Past 100 issues — PR links on the oldest reports may be missing.");
       const priv = await gh.isPrivate();
       if (priv === false) warnings.push("This repo is PUBLIC — every report, screenshot and sample is visible to anyone. Fine for an open-source project; not for a client site.");
-      return json({ ok: true, repo: gh.repoName, site: c.site, rows, warnings, canMint: true });
+      return json({ ok: true, repo: gh.repoName, site: c.site, rows, warnings, admin, canMint: admin });
     }
 
     if (path === "/api/asset" && method === "GET") {
@@ -295,6 +287,24 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       return new Response(buf, {
         headers: { "Content-Type": isPng ? "image/png" : "image/jpeg", "Cache-Control": "private, max-age=300" },
       });
+    }
+
+    /* ── admin-only from here ── */
+    if (!admin) {
+      if (path.startsWith("/api/")) return json({ error: "Not authorised." }, 401);
+      return null;
+    }
+
+    if (path.startsWith("/api/report/") && method === "PATCH") {
+      const num = path.slice("/api/report/".length);
+      if (!/^\d+$/.test(num)) return json({ error: "Bad issue." }, 400);
+      if (!githubReady(env)) return json({ error: "Not configured." }, 503);
+      const body = await readJson();
+      const status = String(body?.status || "");
+      if (!(STATUSES as readonly string[]).includes(status)) return json({ error: "Unknown status." }, 400);
+      /* One call. Open/closed IS the status; nothing can half-apply. */
+      const ok = await new GitHub(env, opts.fetch).setState(Number(num), status === "done" ? "closed" : "open");
+      return ok ? json({ ok: true, status }) : json({ error: "GitHub refused the change — row unchanged." }, 502);
     }
 
     if (path === "/api/reviewers") {

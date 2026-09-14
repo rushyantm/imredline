@@ -684,7 +684,8 @@ declare global {
     if (els.bar) return;
     styles();
     const bar = h("div", "imr-bar");
-    if (state.access?.admin) {
+    /* Every reviewer gets the Queue link — the page is read-only for them. */
+    if (state.access) {
       const q = h("a", "imr-queue", "Queue") as HTMLAnchorElement;
       q.href = HOST + BASE + "/queue" + (CROSS && state.token ? "?token=" + encodeURIComponent(state.token) : "");
       q.target = "_blank";

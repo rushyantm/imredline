@@ -140,7 +140,7 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
   const page = await ctx.newPage();
   await page.goto(`${base}/rooms?imredline=ravi-secret`);
   await page.waitForSelector(".imr-launch", { timeout: 5000 });
-  check("phone: reviewer (not admin) sees no Queue link", (await page.locator(".imr-queue").count()) === 0);
+  check("phone: reviewer (not admin) sees the Queue link too", (await page.locator(".imr-queue").count()) === 1);
   await page.tap(".imr-launch");
   await page.waitForSelector(".imr-overlay");
   await page.tap("#room-img", { force: true });
@@ -203,6 +203,20 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
   await p2.goto(link);
   await p2.waitForSelector(".imr-launch", { timeout: 5000 });
   check("queue: the minted link arms a fresh page", true);
+  await ctx.close();
+}
+
+/* ── 4. the queue, as a plain reviewer: read-only ── */
+{
+  const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/imredline/queue?token=ravi-secret`);
+  await page.waitForSelector(".imq-card");
+  check("reviewer queue: cards render", (await page.locator(".imq-card").count()) >= 1);
+  check("reviewer queue: no Done/Reopen buttons", (await page.locator(".imq-status").count()) === 0);
+  check("reviewer queue: no reviewer panel", (await page.locator(".imq-admin").count()) === 0);
+  check("reviewer queue: status shown as a chip", (await page.locator(".imq-card .imq-chip").count()) >= 1);
+  await page.screenshot({ path: join(OUT, "widget-04-queue-reviewer.jpg"), type: "jpeg", quality: 80, fullPage: true });
   await ctx.close();
 }
 

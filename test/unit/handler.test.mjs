@@ -138,11 +138,28 @@ test("third-party origin: CORS headers only for the allow-list; token in the bod
   assert.equal(cookieOf(res), "", "no Set-Cookie on a cross-origin response");
 });
 
-test("admin-only: queue, status, asset proxy, reviewers; a reviewer is refused", async () => {
-  assert.equal((await call("/imredline/api/queue", {}, { cookie: "imredline=ravi-secret" })).status, 401);
+test("a reviewer reads the queue and its pictures, and cannot write", async () => {
+  assert.equal((await call("/imredline/api/queue")).status, 401, "anonymous");
+  const rq = await call("/imredline/api/queue", {}, { cookie: "imredline=ravi-secret" });
+  assert.equal(rq.status, 200);
+  const rd = await rq.json();
+  assert.equal(rd.admin, false);
+  assert.equal(rd.canMint, false);
+  assert.ok(rd.rows.length >= 1);
+  const rshot = await call(`/imredline/api/asset?path=${encodeURIComponent(rd.rows.find((r) => r.shotPath).shotPath)}`, {}, { cookie: "imredline=ravi-secret" });
+  assert.equal(rshot.status, 200);
+  assert.equal((await call("/imredline/api/report/1", { method: "PATCH", json: { status: "done" } }, { cookie: "imredline=ravi-secret" })).status, 401);
+  assert.equal((await call("/imredline/api/reviewers", {}, { cookie: "imredline=ravi-secret" })).status, 401);
+  assert.equal((await call("/imredline/api/reviewers", { method: "POST", json: { name: "x", days: 7 } }, { cookie: "imredline=ravi-secret" })).status, 401);
+  assert.equal(gh.state.issues[0].state, "open", "a reviewer's PATCH changed nothing");
+});
+
+test("admin: queue, status, asset proxy, reviewers", async () => {
   const q = await call("/imredline/api/queue?token=admin-secret-token");
   assert.equal(q.status, 200);
   const data = await q.json();
+  assert.equal(data.admin, true);
+  assert.equal(data.canMint, true);
   assert.equal(data.repo, "acme/site");
   assert.ok(data.rows.length >= 4);
   const first = data.rows.find((r) => r.number === 1);

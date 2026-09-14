@@ -85,7 +85,7 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 
 ## The queue
 
-`/imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Open / Done is the issue's open / closed state — one call, nothing can half-apply. The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
+`/imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Any reviewer can open it too — through the **Queue** button on the widget, or with their own link's token — and sees every report and screenshot **read-only**. Open / Done is the issue's open / closed state — one call, nothing can half-apply; only the admin can flip it. The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
 
 **Reviewer links** are minted there: name, how long the link lasts (1–90 days), optionally which site it may report on. The link is shown once; only its hash is stored. Revoke takes effect on that browser's next page load.
 
