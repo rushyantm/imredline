@@ -276,9 +276,9 @@ import type { ClipIndexEntry } from "../core/types.js";
   function bookmarklet(host: string, tok: string): HTMLElement {
     const sec = h("section", "imc-book");
     sec.append(h("h2", undefined, "Clip from any site"));
-    sec.append(h("p", undefined, "Drag this to your bookmarks bar. On any page, click it: the ✂ Clip button appears, gated by your own review link. Sites with a strict CSP will refuse the script; the page will say so."));
+    sec.append(h("p", undefined, "Drag this to your bookmarks bar. On any page, click it: the ✂ Clip button appears, gated by your own review link. Sites with a strict Content-Security-Policy (Linear, Apple, Stripe…) refuse outside scripts; you get a message instead of the button."));
     const a = h("a", "imc-drag", "✂ IMRedline Clip") as HTMLAnchorElement;
-    const js = `(()=>{var s=document.createElement('script');s.src=${JSON.stringify(host + BASE + "/widget.js")};s.dataset.host=${JSON.stringify(host)};s.dataset.base=${JSON.stringify(BASE)};s.dataset.token=${JSON.stringify(tok)};document.head.appendChild(s)})()`;
+    const js = `(()=>{var s=document.createElement('script');s.src=${JSON.stringify(host + BASE + "/widget.js")};s.dataset.host=${JSON.stringify(host)};s.dataset.base=${JSON.stringify(BASE)};s.dataset.token=${JSON.stringify(tok)};s.onerror=function(){alert('This site blocks outside scripts (Content-Security-Policy), so IMRedline cannot run here. Ask Claude to clip it by address instead.')};document.head.appendChild(s)})()`;
     a.href = "javascript:" + encodeURIComponent(js);
     a.onclick = (e) => e.preventDefault();
     sec.append(a);

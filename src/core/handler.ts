@@ -456,7 +456,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
 }
 
 /** Stamped into every clip's meta.json. Kept by hand; bump with package.json. */
-export const WIDGET_VERSION = "0.5.1";
+export const WIDGET_VERSION = "0.5.2";
 
 /** A request id the widget can use; exported so tests share one generator. */
 export const newRequestId = () => randomUUID();

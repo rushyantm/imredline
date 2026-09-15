@@ -137,7 +137,7 @@ browser.on("context", (c) => c.on("page", (p) => {
   check("gallery: swatches on the card", (await page.locator(".imc-swatch").count()) > 0);
   check("gallery: bookmarklet offered (CLIP_ORIGINS=*)", (await page.locator(".imc-drag").count()) === 1);
   const href = await page.locator(".imc-drag").getAttribute("href");
-  check("gallery: bookmarklet carries host + token", href.startsWith("javascript:") && decodeURIComponent(href).includes('dataset.token="ravi-secret"') && decodeURIComponent(href).includes(`${base}/imredline/widget.js`), href.slice(0, 80));
+  check("gallery: bookmarklet carries host + token", href.startsWith("javascript:") && decodeURIComponent(href).includes('dataset.token="ravi-secret"') && decodeURIComponent(href).includes(`${base}/imredline/widget.js`) && decodeURIComponent(href).includes("s.onerror="), href.slice(0, 80));
   await page.screenshot({ path: join(OUT, "clip-02-gallery.jpg"), type: "jpeg", quality: 80, fullPage: true });
   await page.click(".imc-card");
   await page.waitForSelector(".imc-readme h1");
