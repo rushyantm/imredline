@@ -24,10 +24,12 @@ const common = {
 };
 await build({ ...common, entryPoints: [r("src/widget/index.ts")], outfile: r("dist/widget.js") });
 await build({ ...common, entryPoints: [r("src/queue/client.ts")], outfile: r("dist/queue.js") });
+await build({ ...common, entryPoints: [r("src/clips/client.ts")], outfile: r("dist/clips.js") });
 
 const assets = {
   "widget.js": readFileSync(r("dist/widget.js"), "utf8"),
   "queue.js": readFileSync(r("dist/queue.js"), "utf8"),
+  "clips.js": readFileSync(r("dist/clips.js"), "utf8"),
   "html2canvas.js": readFileSync(r("node_modules/html2canvas-pro/dist/html2canvas-pro.min.js"), "utf8"),
 };
 const out =
@@ -36,6 +38,7 @@ const out =
   `export const assetTypes = ${JSON.stringify({
     "widget.js": "text/javascript; charset=utf-8",
     "queue.js": "text/javascript; charset=utf-8",
+    "clips.js": "text/javascript; charset=utf-8",
     "html2canvas.js": "text/javascript; charset=utf-8",
   })};\n`;
 writeFileSync(r("dist/core/assets.js"), out);

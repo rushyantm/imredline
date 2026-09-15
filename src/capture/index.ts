@@ -39,6 +39,12 @@ export type CaptureOptions = CloneOptions &
     /** Supply html2canvas yourself (a vendored UMD, say). Default: dynamic
      *  import of html2canvas-pro. */
     loadLibrary?: () => Promise<Html2Canvas>;
+    /** Photograph the element itself, never a surrounding landmark. Clip
+     *  uses this: the reviewer chose the frame with Widen/Narrow. */
+    frameElement?: boolean;
+    /** Upper bound on the render scale. Default 0.75 (a report thumbnail);
+     *  Clip passes the device pixel ratio so a small button clips crisp. */
+    maxScale?: number;
   };
 
 export type CaptureResult = {
@@ -60,6 +66,11 @@ export type CaptureResult = {
 };
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+function htmlHostOf(el: Element): HTMLElement {
+  let n: Element | null = el;
+  while (n && !(n instanceof HTMLElement)) n = n.parentElement;
+  return n ?? document.body;
+}
 
 async function defaultLoad(): Promise<Html2Canvas> {
   const mod = await import("html2canvas-pro");
@@ -69,10 +80,10 @@ async function defaultLoad(): Promise<Html2Canvas> {
 export async function capture(pinned: Element | null, options: CaptureOptions = {}): Promise<CaptureResult> {
   // Any Element — an <svg> icon is a legitimate pin; frame.ts finds it an HTML host.
   const el = pinned instanceof Element && pinned.isConnected ? pinned : null;
-  const frame = pickFrame(el, options);
+  const frame = options.frameElement && el ? htmlHostOf(el) : pickFrame(el, options);
   const fr = frame.getBoundingClientRect();
   const er = el?.getBoundingClientRect() ?? null;
-  const scale = scaleFor(frame, options.areaBudget, 0.12, 0.75);
+  const scale = scaleFor(frame, options.areaBudget, 0.12, options.maxScale ?? 0.75);
   const viewport = { width: innerWidth, height: innerHeight, scrollX, scrollY, dpr: devicePixelRatio };
 
   const pin =

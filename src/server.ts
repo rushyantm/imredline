@@ -1,5 +1,6 @@
 /* `imredline/server` — the framework-free pieces, for anyone writing their own adapter. */
-export { handle, type HandlerOptions, type ExtraAccess } from "./core/handler.js";
+export { handle, WIDGET_VERSION, type HandlerOptions, type ExtraAccess } from "./core/handler.js";
+export { parseClip, renderReadme, renderPreview, indexEntry, nextSlug, parseIndex, clipSlug } from "./core/clip.js";
 export { formatIssue, parseIssue, prsByReport, literal, marker, type GhIssue } from "./core/issue.js";
 export { parseReport, imageData, Reject } from "./core/validate.js";
 export { resolveToken, createReviewer, revokeReviewer, listReviewers, allowedSite, cookieValue, sameSecret, TOKEN_COOKIE, HINT_COOKIE } from "./core/access.js";

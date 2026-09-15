@@ -9,6 +9,20 @@ export const CSS = `
 .imr-launch{padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:#1f2937;color:#fff;font:inherit;font-size:14px;font-weight:600;letter-spacing:.01em;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.28)}
 .imr-launch:hover{filter:brightness(1.2)}
 .imr-launch[aria-pressed="true"]{background:#e2483d}
+.imr-clip{padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:#0f6e56;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.28)}
+.imr-clip:hover{filter:brightness(1.15)}
+.imr-clip[aria-pressed="true"]{background:#e2483d}
+.imr-overlay--clip{cursor:copy}
+.imr-overlay--clip .imr-banner{background:#0f6e56}
+.imr-dialog--clip::backdrop{background:rgba(0,0,0,.1)}
+.imr-dialog--clip{width:400px}
+.imr-wn{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px}
+.imr-wn .imr-target{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imr-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.imr-field{min-width:0;padding:7px 9px;border:1px solid #dcdcdc;border-radius:7px;font:inherit;font-size:13px;color:#0c0d0d;background:#fff}
+.imr-note--short{min-height:48px}
+.imr-cstats{margin:8px 0 0;font-size:11px;line-height:1.45;color:#6b6b6b}
+.imr-cstats.is-error{color:#b3261e}
 .imr-queue{padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:#0c0d0d;color:#fff;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 6px 24px rgba(0,0,0,.28)}
 .imr-overlay{position:fixed;inset:0;z-index:2147483100;cursor:crosshair}
 .imr-banner{position:fixed;top:0;left:0;right:0;padding:9px 16px;background:#e2483d;color:#fff;font-family:system-ui,sans-serif;font-size:13px;font-weight:600;text-align:center}

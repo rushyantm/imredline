@@ -4,7 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../../dist/core/handler.js";
-import { fakeGitHub, PNG_1x1, TEST_ENV } from "../helpers/fake-github.mjs";
+import { fakeGitHub, JPG_1x1, PNG_1x1, TEST_ENV } from "../helpers/fake-github.mjs";
 
 const ORIGIN = "http://site.test";
 const env = { ...TEST_ENV, IMREDLINE_DATA_DIR: mkdtempSync(join(tmpdir(), "imredline-")), IMREDLINE_ORIGINS: "https://old.example" };
@@ -215,4 +215,165 @@ test("a bring-your-own token source arms a browser and files, after the built-in
   /* built-ins still win: the admin token stays admin even if the extra source would also answer */
   const adm = await handle(new Request(ORIGIN + "/imredline/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: "admin-secret-token" }) }), { ...extra, resolveToken: async () => ({ name: "impostor" }) });
   assert.equal((await adm.json()).admin, true);
+});
+
+/* ── Clip (0.5.0) ── */
+const clip = (over = {}) => ({
+  requestId: "cccccccc-bbbb-4ccc-8ddd-000000000001",
+  name: "Hero Section",
+  collection: "PEMA rebuild",
+  note: "Love the type scale.",
+  source: { url: "https://www.example.com/rooms?x=1", title: "Rooms — Example" },
+  selector: "section.hero",
+  bounds: { width: 1200, height: 480 },
+  viewport: { width: 1440, height: 900, dpr: 2 },
+  device: { kind: "desktop", orientation: "landscape", touch: false },
+  html: '<section class="c1" id="hero">\n  <h1 class="c2">Make room for life</h1>\n  <img class="c3" src="https://www.example.com/a.jpg" alt="room">\n</section>\n',
+  css: ".c1 { /* was: hero */\n  display: block;\n  padding-top: 48px;\n  background-color: #e9dfd0;\n}\n.c2 {\n  font-size: 48px;\n}\n.c2:hover { color: #ff0000; }\n",
+  tokens: {
+    colors: [{ value: "#e9dfd0", count: 1, hsl: "hsl(36 36% 87%)", contrast: 1 }, { value: "#1a1a1a", count: 3, contrast: 12.4 }],
+    fonts: [{ value: "Crimson Text", count: 4 }],
+    typeScale: [{ value: "48/1.1", count: 1 }],
+    spacing: [8, 16, 48],
+    radii: [12],
+    shadows: [],
+    breakpoints: ["(max-width: 640px)"],
+  },
+  assets: [{ kind: "image", url: "https://www.example.com/a.jpg", alt: "room", rendered: [360, 220], natural: [720, 440] }, { kind: "font", family: "Crimson Text", urls: [] }],
+  states: "full",
+  unreadable: [],
+  counts: { elements: 3, images: 1, fonts: 1, stateRules: 1, keyframes: 0 },
+  screenshot: JPG_1x1,
+  ...over,
+});
+
+test("clip: a reviewer clips → one commit with seven files + index on the clips branch", async () => {
+  const before = gh.state.commits.length;
+  const res = await call("/imredline/api/clip", { method: "POST", json: clip() }, { cookie: "imredline=ravi-secret" });
+  const out = await res.json();
+  assert.equal(res.status, 201, JSON.stringify(out));
+  assert.equal(out.collection, "pema-rebuild");
+  assert.equal(out.slug, "hero-section-01");
+  assert.equal(out.path, "clips/pema-rebuild/hero-section-01");
+  assert.equal(out.hasShot, true);
+  assert.ok(gh.state.branches.has("imredline-clips"));
+  assert.equal(gh.state.commits.length, before + 1, "exactly one commit");
+  const c = gh.state.commits.at(-1);
+  assert.equal(c.branch, "imredline-clips");
+  assert.match(c.message, /^clip pema-rebuild\/hero-section-01 from www\.example\.com$/);
+  const dir = "imredline-clips:clips/pema-rebuild/hero-section-01/";
+  for (const f of ["README.md", "component.html", "component.css", "tokens.json", "meta.json", "preview.html", "screenshot.jpg"]) assert.ok(gh.state.contents.has(dir + f), f);
+  assert.ok(gh.state.contents.has("imredline-clips:clips/index.json"));
+  const readme = gh.state.contents.get(dir + "README.md").toString();
+  assert.ok(readme.startsWith("# hero-section — clipped from www.example.com"));
+  assert.ok(readme.includes("- **clipped:** ") && readme.includes(" by ravi"));
+  assert.ok(readme.includes("| `#e9dfd0` | hsl(36 36% 87%) | 1 | 1.00 |"));
+  assert.ok(readme.includes("**Fonts:** Crimson Text ×4"));
+  assert.ok(readme.includes("- image https://www.example.com/a.jpg — rendered 360×220, natural 720×440, alt “room”"));
+  assert.ok(readme.includes("Love the type scale."));
+  const preview = gh.state.contents.get(dir + "preview.html").toString();
+  assert.ok(preview.includes(".c2:hover { color: #ff0000; }") && preview.includes('<h1 class="c2">Make room for life</h1>'));
+  const meta = JSON.parse(gh.state.contents.get(dir + "meta.json").toString());
+  assert.equal(meta.reviewer, "ravi");
+  assert.equal(meta.widget, "0.5.0");
+  assert.equal(meta.source.url, "https://www.example.com/rooms?x=1");
+  const shot = gh.state.contents.get(dir + "screenshot.jpg");
+  assert.ok(shot[0] === 0xff && shot[1] === 0xd8, "screenshot is a real JPEG");
+  const index = JSON.parse(gh.state.contents.get("imredline-clips:clips/index.json").toString());
+  assert.equal(index.length, 1);
+  assert.equal(index[0].slug, "hero-section-01");
+  assert.deepEqual(index[0].colors, ["#e9dfd0", "#1a1a1a"]);
+  assert.equal(index[0].screenshot, "clips/pema-rebuild/hero-section-01/screenshot.jpg");
+});
+
+test("clip: the same name again is -02; the same requestId again is found, not landed twice", async () => {
+  const again = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000002", screenshot: undefined }) }, { cookie: "imredline=ravi-secret" });
+  const out = await again.json();
+  assert.equal(again.status, 201, JSON.stringify(out));
+  assert.equal(out.slug, "hero-section-02");
+  assert.equal(out.hasShot, false);
+  const index = JSON.parse(gh.state.contents.get("imredline-clips:clips/index.json").toString());
+  assert.equal(index.length, 2);
+  assert.equal(index[0].slug, "hero-section-02", "newest first");
+  const commits = gh.state.commits.length;
+  const twin = await call("/imredline/api/clip", { method: "POST", json: clip() }, { cookie: "imredline=ravi-secret" });
+  assert.equal(twin.status, 200);
+  assert.equal((await twin.json()).duplicate, true);
+  assert.equal(gh.state.commits.length, commits, "no new commit for a twin");
+});
+
+test("clip: caps and scripts are refused; anonymous → 401; a scoped link clips only its own site", async () => {
+  const big = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000003", html: "<div>" + "<span></span>".repeat(401) + "</div>" }) }, { cookie: "imredline=ravi-secret" });
+  assert.equal(big.status, 400);
+  assert.match((await big.json()).error, /400 elements/);
+  const script = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000004", html: '<div onclick="x()">hi</div>' }) }, { cookie: "imredline=ravi-secret" });
+  assert.equal(script.status, 400);
+  const anon = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000005" }) });
+  assert.equal(anon.status, 401);
+  const { createReviewer } = await import("../../dist/core/access.js");
+  const scoped = await createReviewer({ name: "Scoped2", sites: ["other.test"] }, env);
+  const wrong = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000006", token: scoped.token }) });
+  assert.equal(wrong.status, 403);
+  const right = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000007", token: scoped.token, source: { url: "https://other.test/x", title: "" } }) });
+  assert.equal(right.status, 201);
+  gh.state.failCommit = true;
+  const down = await call("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000008" }) }, { cookie: "imredline=ravi-secret" });
+  gh.state.failCommit = false;
+  assert.equal(down.status, 502);
+});
+
+test("clip: gallery page, list and the file proxy for any reviewer; path-jail; no bookmarklet by default", async () => {
+  const page = await call("/imredline/clips");
+  assert.equal(page.status, 200);
+  assert.ok((await page.text()).includes('id="imc"'));
+  const anon = await call("/imredline/api/clips");
+  assert.equal(anon.status, 401);
+  const list = await call("/imredline/api/clips", {}, { cookie: "imredline=sri-secret" });
+  const data = await list.json();
+  assert.equal(list.status, 200);
+  assert.equal(data.admin, false);
+  assert.equal(data.bookmarklet, false);
+  assert.equal(data.token, null);
+  assert.equal(data.branch, "imredline-clips");
+  assert.equal(data.clips.length, 3);
+  assert.equal(data.clips[0].requestId, undefined, "requestId never leaves the server");
+  const css = await call("/imredline/api/clip-asset?path=clips/pema-rebuild/hero-section-01/component.css", {}, { cookie: "imredline=sri-secret" });
+  assert.equal(css.status, 200);
+  assert.equal(css.headers.get("content-type"), "text/plain; charset=utf-8");
+  assert.ok((await css.text()).includes(".c1 {"));
+  const html = await call("/imredline/api/clip-asset?path=clips/pema-rebuild/hero-section-01/preview.html", {}, { cookie: "imredline=sri-secret" });
+  assert.equal(html.headers.get("content-type"), "text/plain; charset=utf-8", "preview is never served as a document");
+  const shot = await call("/imredline/api/clip-asset?path=clips/pema-rebuild/hero-section-01/screenshot.jpg", {}, { cookie: "imredline=sri-secret" });
+  assert.equal(shot.headers.get("content-type"), "image/jpeg");
+  for (const bad of ["clips/../x/README.md", "clips/pema-rebuild/hero-section-01/evil.js", "shots/x.jpg", "clips/pema-rebuild/hero-section-01/README.md/.."]) {
+    const r = await call(`/imredline/api/clip-asset?path=${encodeURIComponent(bad)}`, {}, { cookie: "imredline=sri-secret" });
+    assert.equal(r.status, 400, bad);
+  }
+  const missing = await call("/imredline/api/clip-asset?path=clips/pema-rebuild/hero-section-09/README.md", {}, { cookie: "imredline=sri-secret" });
+  assert.equal(missing.status, 404);
+});
+
+test("clip: IMREDLINE_CLIP_ORIGINS=* opens session + clip to any origin, never report; the list carries the token for the bookmarklet", async () => {
+  const anyEnv = { ...env, IMREDLINE_CLIP_ORIGINS: "*" };
+  const anyOpts = { env: anyEnv, fetch: gh.fetch };
+  const c2 = (path, init = {}, headers = {}) =>
+    handle(new Request(ORIGIN + path, { ...init, headers: { "Content-Type": "application/json", ...headers }, body: init.json !== undefined ? JSON.stringify(init.json) : null }), anyOpts);
+  const pre = await c2("/imredline/api/clip", { method: "OPTIONS" }, { origin: "https://anything.example" });
+  assert.equal(pre.headers.get("access-control-allow-origin"), "https://anything.example");
+  const sess = await c2("/imredline/api/session", { method: "POST", json: { token: "ravi-secret" } }, { origin: "https://anything.example" });
+  assert.equal(sess.status, 200);
+  assert.equal(sess.headers.get("access-control-allow-origin"), "https://anything.example");
+  assert.equal(cookieOf(sess), "");
+  const clipped = await c2("/imredline/api/clip", { method: "POST", json: clip({ requestId: "cccccccc-bbbb-4ccc-8ddd-000000000009", token: "ravi-secret", source: { url: "https://anything.example/p", title: "t" } }) }, { origin: "https://anything.example" });
+  assert.equal(clipped.status, 201);
+  assert.equal(clipped.headers.get("access-control-allow-origin"), "https://anything.example");
+  const rep = await c2("/imredline/api/report", { method: "OPTIONS" }, { origin: "https://anything.example" });
+  assert.equal(rep.headers.get("access-control-allow-origin"), null, "reports stay on the allow-list");
+  const list = await c2("/imredline/api/clips", {}, { cookie: "imredline=ravi-secret" });
+  const data = await list.json();
+  assert.equal(data.bookmarklet, true);
+  assert.equal(data.token, "ravi-secret");
+  const separate = await handle(new Request(ORIGIN + "/imredline/api/clips", { headers: { cookie: "imredline=ravi-secret" } }), { env: { ...env, IMREDLINE_CLIPS_REPO: "acme/swipe" }, fetch: gh.fetch });
+  assert.equal(separate.status, 200);
+  assert.equal((await separate.json()).repo, "acme/swipe");
 });

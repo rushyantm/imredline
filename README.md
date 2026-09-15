@@ -80,6 +80,8 @@ Reports carry `host/path` so the issue says which site they came from. The token
 | `IMREDLINE_DATA_DIR` | Where minted reviewer links (SHA-256 only) live. Default `.imredline`. On Railway, point it at a volume or minted links vanish on redeploy; env reviewers are unaffected. |
 | `IMREDLINE_MASK_FORMS` | `1` blanks form fields in screenshots. Default off — testers need to see what they typed. Anything with `data-imredline-private` is always blanked. |
 | `IMREDLINE_BASE` | Mount path. Default `/imredline`. |
+| `IMREDLINE_CLIPS_REPO` | Optional `owner/repo` for clips (see below). Default: the reports repo. Same token; needs Contents R/W there. |
+| `IMREDLINE_CLIP_ORIGINS` | `*` lets the bookmarklet clip from **any** site. Off by default. Reports are never affected. |
 
 Without the GitHub variables every write returns 503 and the widget says so. It ships dormant and loud, never silently dropping reports.
 
@@ -88,6 +90,35 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 `/imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Any reviewer can open it too — through the **Queue** button on the widget, or with their own link's token — and sees every report and screenshot **read-only**. Open / Done is the issue's open / closed state — one call, nothing can half-apply; only the admin can flip it. The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
 
 **Reviewer links** are minted there: name, how long the link lasts (1–90 days), optionally which site it may report on. The link is shown once; only its hash is stored. Revoke takes effect on that browser's next page load.
+
+## Clip — components for inspiration
+
+The bar has a second button: **✂ Clip**. Same point-and-click, but nothing is filed. The component you pick lands on the `imredline-clips` branch as a folder any person or coding agent can rebuild from:
+
+```
+clips/<collection>/<name>-NN/
+  README.md        a prompt: source, size, tokens table, assets, how to rebuild
+  component.html   the markup, cleaned — no scripts, no tracking attributes, classes rewritten to .c1 .c2 …
+  component.css    computed styles folded into those classes (40–150 lines, not the site's framework),
+                   then hover/focus/active rules and keyframes where the browser could read them
+  tokens.json      colours (with contrast), fonts, type scale, spacing, radii, shadows, breakpoints
+  meta.json        source URL, viewport, device, counts, widget version
+  preview.html     html + css in one file — open it
+  screenshot.jpg   what it looked like
+clips/index.json   every clip, newest first
+```
+
+**Widen / Narrow** (or ↑ ↓) walk up and down the DOM, because the thing you mean is usually the parent of what you clicked. The dialog says what it has: `1360×1494 · 27 elements · 6 images · 2 fonts · hover rules: readable (3)`. Over 400 elements or 200 KB it refuses and says so.
+
+Sizing comes from the cascade, not the used pixels: `width: 90%` stays `90%`, `grid-cols-3` stays `repeat(3, minmax(0, 1fr))`. Cross-origin stylesheets cannot be read; the clip then says `states: partial`, the resting look is still complete, and sizes fall back to heuristics.
+
+Nothing is fetched by the server and no image or font bytes are copied — the README lists their addresses and says *download if you have the right to*. Only the screenshot travels. Text is kept so the layout reads; the README says whose it is.
+
+**The gallery** at `/imredline/clips` — cards with screenshot, swatches and fonts; filter by collection or site; open one for the README, the preview in a sandboxed iframe, and Copy prompt / HTML / CSS / tokens. Read-only for every reviewer, like the queue.
+
+**Any site.** With `IMREDLINE_CLIP_ORIGINS=*` the gallery offers a bookmarklet. On a page that does not carry the widget, it injects it with your own token; the ✂ button appears and the clip lands in the same branch. A strict Content-Security-Policy will refuse the script. A page that already runs IMRedline ignores the bookmarklet (its own widget wins).
+
+One clip is one commit. A coding agent building a new site reads the branch — `clips/index.json` first, then the folder.
 
 ## The issue body is a contract
 
@@ -137,6 +168,7 @@ The UUID on the first line makes a retry safe: a Send that timed out but landed 
 - **Store anything itself.** If GitHub is down, Send shows a clear error and keeps the draft in the dialog; the reviewer tries again. A database-backed queue that never loses a report is v2.
 - **Delete pictures.** They are commits on the `imredline-assets` branch; git keeps them. If that matters, keep the repo private (the queue warns when it isn't).
 - **Native apps.** IMRedline needs a DOM. An iOS / Android SDK that files into the same issue format is a separate future project.
+- **Audit a clip.** Capturing is the package's job; judging is yours. A UX-audit skill for your own Claude that reads the clip folder is the intended next step (see `docs/CLIP-SPEC.md`), and a journey recorder across pages is v2.
 
 ## Develop
 

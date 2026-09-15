@@ -1,6 +1,6 @@
 {
   "name": "imredline",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Point at anything on a live website, say what's wrong, and it lands as a GitHub issue — screenshot, pinned element, attachments and all — for humans and AI agents to fix.",
   "license": "MIT",
   "author": "Rushyant Mulpuri",
@@ -20,7 +20,10 @@
     "widget",
     "nextjs",
     "annotation",
-    "bug-report"
+    "bug-report",
+    "design-inspiration",
+    "component-capture",
+    "design-tokens"
   ],
   "type": "module",
   "private": false,
@@ -58,7 +61,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && npm run test:unit && npm run test:browser",
     "test:unit": "node --test test/unit/*.test.mjs",
-    "test:browser": "node test/browser/capture.mjs && node test/browser/widget.mjs",
+    "test:browser": "node test/browser/capture.mjs && node test/browser/widget.mjs && node test/browser/clip.mjs",
     "prepublishOnly": "npm run build && npm run check && npm run test:unit"
   },
   "dependencies": {

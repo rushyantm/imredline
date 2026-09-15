@@ -40,6 +40,11 @@ The mount path `/imredline`, the env variable names, the `tester-feedback`
 label and the `imredline-assets` branch are public API. Renaming any of them
 is a major version.
 
+**A clip folder is a contract too** (README § "Clip"). The `imredline-clips`
+branch, the `clips/<collection>/<slug>/` layout, the seven file names and the
+shape of `clips/index.json` are read by people and by coding agents that never
+see this package. Add files or fields; never rename or remove them.
+
 ## Ground rules
 
 - No new runtime dependencies without a discussion first. The server half has

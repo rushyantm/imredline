@@ -1,7 +1,22 @@
 # Clip — component capture for inspiration (spec, not built)
 
-Status: **draft, 2026-09-15**. Nothing here exists in the package yet. Target
-release 0.5.0.
+Status: **built in 0.5.0 (2026-09-15)**. The gesture, the capture, the folder,
+the gallery and the bookmarklet below are shipped; the README is the user-facing
+description. Still open: the audit skill (§ "The audit half") and the journey
+recorder (v2). Departures from this draft, as built:
+
+- Sizing properties (`width`, `height`, `min/max-*`, `grid-template-*`,
+  `margin: auto`, offsets) are read from the **cascade** where stylesheets are
+  readable, not from the used pixels — `90%` stays `90%`. Heuristics only when
+  sheets are cross-origin.
+- Box-sizing is hoisted to one rule when a reset sets it everywhere; Tailwind's
+  `border: 0 solid` preflight and `transition` entries for custom properties
+  are dropped as noise.
+- The three open questions were taken at their defaults: same repo (override
+  `IMREDLINE_CLIPS_REPO`), bookmarklet off unless `IMREDLINE_CLIP_ORIGINS=*`,
+  gallery readable by every reviewer.
+- A page that already runs the widget ignores the bookmarklet (the existing
+  double-load guard); clip there with the site's own ✂ button.
 
 ## The idea in one line
 

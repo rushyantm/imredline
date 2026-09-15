@@ -13,11 +13,17 @@
     GET    <base>/api/queue                               reviewer: rows as JSON (read-only unless admin)
     GET    <base>/api/asset?path=shots/x.jpg              reviewer: image proxy
     GET/POST/DELETE <base>/api/reviewers                  admin: mint/revoke
+    POST   <base>/api/clip                                clip a component (0.5.0)
+    GET    <base>/api/clips                               reviewer: clips/index.json
+    GET    <base>/api/clip-asset?path=clips/c/s/file      reviewer: file proxy
+    GET    <base>/clips                                   the gallery page
     OPTIONS *                                             CORS preflight
 
   Third-party mode (PEMA): an origin listed in IMREDLINE_ORIGINS may call
   session and report cross-origin, with the token in the body. Everyone else
   gets no CORS headers and the browser refuses the response.
+  IMREDLINE_CLIP_ORIGINS=* opens session + clip (never report) to ANY origin,
+  which is what the bookmarklet needs on a site nobody controls.
 */
 
 import { randomUUID } from "node:crypto";
@@ -35,11 +41,13 @@ import {
   TOKEN_COOKIE,
 } from "./access.js";
 import { assets, assetTypes } from "./assets.js";
+import { clipsPage } from "./clips-page.js";
+import { indexEntry, nextSlug, parseClip, parseIndex, renderPreview, renderReadme } from "./clip.js";
 import { config, githubReady, type Env } from "./env.js";
 import { GitHub, type Fetch } from "./github.js";
 import { formatIssue, parseIssue, prsByReport } from "./issue.js";
 import { queuePage } from "./page.js";
-import { REVIEW_LABEL, STATUSES, type Access, type QueueRow } from "./types.js";
+import { CLIPS_BRANCH, REVIEW_LABEL, STATUSES, type Access, type ClipIndexEntry, type QueueRow } from "./types.js";
 import { imageData, parseReport, Reject, slug, viewportText } from "./validate.js";
 
 export type HandlerOptions = {
@@ -87,23 +95,25 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
   const path = url.pathname.slice(c.base.length) || "/";
   const method = req.method.toUpperCase();
 
-  /* CORS for listed third-party origins only. */
+  /* CORS for listed third-party origins only — plus, when the owner has
+     switched the bookmarklet on, ANY origin for the two routes a clip needs. */
   const origin = req.headers.get("origin");
   const sameOrigin = !origin || origin === url.origin;
-  const cors: Record<string, string> =
-    origin && !sameOrigin && c.origins.includes(origin)
-      ? {
-          "Access-Control-Allow-Origin": origin,
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-          Vary: "Origin",
-        }
-      : {};
+  const clipRoute = path === "/api/session" || path === "/api/clip";
+  const corsOk = Boolean(origin && !sameOrigin && (c.origins.includes(origin) || (c.clipAnyOrigin && clipRoute)));
+  const cors: Record<string, string> = corsOk
+    ? {
+        "Access-Control-Allow-Origin": origin!,
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        Vary: "Origin",
+      }
+    : {};
   if (method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const crossOrigin = Boolean(origin && !sameOrigin);
 
   /* ── static ── */
-  if (method === "GET" && (path === "/widget.js" || path === "/queue.js" || path === "/html2canvas.js")) {
+  if (method === "GET" && (path === "/widget.js" || path === "/queue.js" || path === "/clips.js" || path === "/html2canvas.js")) {
     const name = path.slice(1);
     const body = assets[name];
     if (!body) return new Response("asset missing — run the package build", { status: 503 });
@@ -113,6 +123,11 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
   }
   if (method === "GET" && (path === "/" || path === "/queue")) {
     return new Response(queuePage(c.base, req.headers.get("x-nonce") || ""), {
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
+    });
+  }
+  if (method === "GET" && path === "/clips") {
+    return new Response(clipsPage(c.base, req.headers.get("x-nonce") || ""), {
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
     });
   }
@@ -248,6 +263,73 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       );
     }
 
+    /* ── clip a component (0.5.0). Same access as a report, same
+       cross-origin shape, but nothing is filed: seven files and the index
+       land on the clips branch in ONE commit. ── */
+    if (path === "/api/clip" && method === "POST") {
+      if (!githubReady(env)) return json({ error: "Review backend not configured (IMREDLINE_GITHUB_TOKEN / IMREDLINE_GITHUB_REPO)." }, 503, cors);
+      if (limited(`clip:${ipOf(req)}`, 60)) return json({ error: "Too many clips from this connection. Try again in an hour." }, 429, cors);
+      const raw = await readJson();
+      const input = parseClip(raw);
+      const access = await who(input.token);
+      if (!access) return json({ error: "Your review access has expired — open your review link again." }, 401, cors);
+      /* A scoped link clips only from its own site; an unscoped one clips anywhere. */
+      const hostOf = new URL(input.source.url).host;
+      if (access.sites.length && !allowedSite(access, hostOf)) return json({ error: "Your review link does not cover this site." }, 403, cors);
+
+      const gh = new GitHub(env, opts.fetch, c.clipsRepo || undefined);
+      const indexRaw = await gh.readAsset("clips/index.json", CLIPS_BRANCH);
+      const entries = parseIndex(indexRaw ? new TextDecoder().decode(indexRaw) : null);
+      /* A retry after a timeout must not land twice: the requestId is in meta.json and the index. */
+      const twin = entries.find((e) => (e as ClipIndexEntry & { requestId?: string }).requestId === input.requestId);
+      if (twin) return json({ ok: true, path: twin.path, slug: twin.slug, collection: twin.collection, duplicate: true, hasShot: Boolean(twin.screenshot) }, 200, cors);
+
+      const slugName = nextSlug(entries, input.collection, input.name);
+      const dir = `clips/${input.collection}/${slugName}`;
+      const clippedAt = new Date().toISOString();
+      let shotB64: string | null = null;
+      let shotError = input.shotError ?? null;
+      if (input.screenshot) {
+        const img = imageData(input.screenshot);
+        if (!img) shotError = "screenshot too large or not an image";
+        else if (img.ext !== "jpg") shotError = "screenshot was not a JPEG";
+        else shotB64 = img.b64;
+      }
+      const meta = { collection: input.collection, slug: slugName, reviewer: access.name, clippedAt, hasShot: Boolean(shotB64), hostOf, path: dir };
+      const entry = { ...indexEntry(input, meta), requestId: input.requestId };
+      const metaJson = {
+        requestId: input.requestId,
+        name: input.name,
+        collection: input.collection,
+        slug: slugName,
+        reviewer: access.name,
+        clippedAt,
+        source: input.source,
+        selector: input.selector,
+        bounds: input.bounds,
+        viewport: input.viewport ?? null,
+        device: input.device ?? null,
+        states: input.states,
+        unreadable: input.unreadable,
+        counts: input.counts,
+        shotError,
+        widget: WIDGET_VERSION,
+      };
+      const files: { path: string; content: string; encoding?: "utf-8" | "base64" }[] = [
+        { path: `${dir}/README.md`, content: renderReadme(input, meta) },
+        { path: `${dir}/component.html`, content: input.html.endsWith("\n") ? input.html : input.html + "\n" },
+        { path: `${dir}/component.css`, content: input.css.endsWith("\n") ? input.css : input.css + "\n" },
+        { path: `${dir}/tokens.json`, content: JSON.stringify(input.tokens, null, 2) + "\n" },
+        { path: `${dir}/meta.json`, content: JSON.stringify(metaJson, null, 2) + "\n" },
+        { path: `${dir}/preview.html`, content: renderPreview(input, `${input.collection}/${slugName}`) },
+        { path: "clips/index.json", content: JSON.stringify([entry, ...entries], null, 2) + "\n" },
+      ];
+      if (shotB64) files.push({ path: `${dir}/screenshot.jpg`, content: shotB64, encoding: "base64" });
+      const sha = await gh.commitFiles(CLIPS_BRANCH, `clip ${input.collection}/${slugName} from ${hostOf}`, files);
+      if (!sha) return json({ error: "Could not save the clip — GitHub did not accept it. Try again." }, 502, cors);
+      return json({ ok: true, path: dir, slug: slugName, collection: input.collection, hasShot: Boolean(shotB64), shotError: shotB64 ? undefined : shotError, commit: sha }, 201, cors);
+    }
+
     /* ── everything below needs a signed-in reviewer, same-origin.
        Reading the queue and its pictures is for ANY reviewer — someone who
        files reports deserves to see where they went. Everything that WRITES
@@ -286,6 +368,44 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       const isPng = head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47;
       return new Response(buf, {
         headers: { "Content-Type": isPng ? "image/png" : "image/jpeg", "Cache-Control": "private, max-age=300" },
+      });
+    }
+
+    if (path === "/api/clips" && method === "GET") {
+      if (!githubReady(env)) return json({ error: "GitHub isn't configured — set IMREDLINE_GITHUB_TOKEN and IMREDLINE_GITHUB_REPO.", clips: [], admin }, 503);
+      const gh = new GitHub(env, opts.fetch, c.clipsRepo || undefined);
+      const raw = await gh.readAsset("clips/index.json", CLIPS_BRANCH);
+      const clips = parseIndex(raw ? new TextDecoder().decode(raw) : null).map((e) => {
+        const { requestId: _drop, ...rest } = e as ClipIndexEntry & { requestId?: string };
+        return rest;
+      });
+      /* The bookmarklet carries the reviewer's own token back to them — the
+         same secret their cookie already holds — and only when the owner has
+         opened clipping to any origin. */
+      const bookmarkletToken = c.clipAnyOrigin ? (cookieToken || queryToken || null) : null;
+      return json({ ok: true, repo: gh.repoName, branch: CLIPS_BRANCH, site: c.site, clips, admin, bookmarklet: c.clipAnyOrigin, token: bookmarkletToken });
+    }
+
+    if (path === "/api/clip-asset" && method === "GET") {
+      const p = url.searchParams.get("path") || "";
+      /* Path-jail: clips/<collection>/<slug>/<one of seven files>. */
+      const m = /^clips\/([a-z0-9-]{1,40})\/([a-z0-9-]{1,48})\/(README\.md|component\.html|component\.css|tokens\.json|meta\.json|preview\.html|screenshot\.jpg)$/.exec(p);
+      if (!m) return new Response("Bad path", { status: 400 });
+      if (!githubReady(env)) return new Response("Not configured", { status: 503 });
+      const buf = await new GitHub(env, opts.fetch, c.clipsRepo || undefined).readAsset(p, CLIPS_BRANCH);
+      if (!buf) return new Response("Not found", { status: 404 });
+      const file = m[3]!;
+      if (file === "screenshot.jpg") {
+        const head = new Uint8Array(buf.slice(0, 2));
+        if (head[0] !== 0xff || head[1] !== 0xd8) return new Response("Not an image", { status: 415 });
+        return new Response(buf, { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=300" } });
+      }
+      /* Everything else is served as TEXT, never as a document: a clipped
+         page must not execute or render on this origin. The gallery puts
+         preview.html into a sandboxed iframe via srcdoc. */
+      const type = file.endsWith(".json") ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
+      return new Response(buf, {
+        headers: { "Content-Type": type, "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff", "Content-Disposition": "inline" },
       });
     }
 
@@ -333,6 +453,9 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
     return json({ error: "Something went wrong on the server." }, 500, cors);
   }
 }
+
+/** Stamped into every clip's meta.json. Kept by hand; bump with package.json. */
+export const WIDGET_VERSION = "0.5.0";
 
 /** A request id the widget can use; exported so tests share one generator. */
 export const newRequestId = () => randomUUID();

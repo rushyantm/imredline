@@ -16,9 +16,15 @@
           moment the pin lands, never holding up typing) → send.
   Esc leaves any state. The capture engine is loaded only for a recognised
   reviewer, so a visitor never downloads it.
+
+  Two tools share that machinery (0.5.0): 🛠 Review files a report; ✂ Clip
+  captures a component for inspiration (see ../clip/extract.ts). Same arm,
+  same overlay, same pin; a different dialog. A bookmarklet passes the token
+  on the script tag (`data-token`) for sites nobody controls.
 */
 
 import { capture, elementUnder, selectorFor } from "../capture/index.js";
+import { extractClip, suggestName, type ExtractResult } from "../clip/extract.js";
 import { DEFAULT_TYPE, NOTE_MAX, NOTE_MIN, type Device, type ReportType, type Sample } from "../core/types.js";
 import { classifyDevice, deviceIcon, nextKind } from "./device.js";
 import { canAdd, classifyAddress, sampleImage, withTimeout } from "./samples.js";
@@ -60,6 +66,7 @@ declare global {
     access: null as Access | null,
     token: null as string | null,
     mode: "off" as "off" | "armed" | "pinned",
+    tool: "review" as "review" | "clip",
     sending: false,
     samplesBusy: false,
   };
@@ -76,11 +83,26 @@ declare global {
     anchor: { x: number; y: number } | null;
   };
   let draft: Draft | null = null;
+  type ClipDraft = {
+    requestId: string;
+    el: Element;
+    /** What was clicked; Narrow walks back down towards it. */
+    deepest: Element;
+    narrowStack: Element[];
+    device: Device;
+    viewport: { width: number; height: number; dpr: number };
+    shot: string | null;
+    shotError: string;
+    extract: ExtractResult | null;
+    extractError: string;
+    anchor: { x: number; y: number } | null;
+  };
+  let clipDraft: ClipDraft | null = null;
   let shotWork: Promise<void> = Promise.resolve();
   let version = 0;
   let hoverEl: Element | null = null;
   let styleEl: HTMLStyleElement | null = null;
-  const els: Partial<Record<"bar" | "launch" | "overlay" | "highlight" | "dialog" | "toast", HTMLElement>> = {};
+  const els: Partial<Record<"bar" | "launch" | "clip" | "overlay" | "highlight" | "dialog" | "toast", HTMLElement>> = {};
 
   /* ── helpers ── */
   const h = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string) => {
@@ -163,6 +185,8 @@ declare global {
     hoverEl = null;
     version++;
     draft = null;
+    clipDraft = null;
+    cui = null;
     els.overlay?.remove();
     els.highlight?.remove();
     delete els.overlay;
@@ -179,6 +203,10 @@ declare global {
     if (els.launch) {
       els.launch.textContent = "🛠 Review";
       els.launch.setAttribute("aria-pressed", "false");
+    }
+    if (els.clip) {
+      els.clip.textContent = "✂ Clip";
+      els.clip.setAttribute("aria-pressed", "false");
     }
   }
 
@@ -224,15 +252,23 @@ declare global {
       pin(document.activeElement, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
     }
   }
-  function arm() {
+  function arm(tool: "review" | "clip" = "review") {
     if (!state.access) return;
+    if (state.mode !== "off") disarm();
     state.mode = "armed";
-    els.launch!.textContent = "✕ Exit review";
-    els.launch!.setAttribute("aria-pressed", "true");
+    state.tool = tool;
+    const btn = tool === "clip" ? els.clip! : els.launch!;
+    btn.textContent = tool === "clip" ? "✕ Exit clip" : "✕ Exit review";
+    btn.setAttribute("aria-pressed", "true");
     const o = h("div", "imr-overlay");
+    if (tool === "clip") o.classList.add("imr-overlay--clip");
     o.setAttribute("aria-hidden", "true");
     const banner = h("div", "imr-banner");
-    banner.append("Review mode — click anything to report it · ", h("kbd", undefined, "Esc"), " to exit");
+    banner.append(
+      tool === "clip" ? "Clip mode — click a component to capture it · " : "Review mode — click anything to report it · ",
+      h("kbd", undefined, "Esc"),
+      " to exit",
+    );
     o.appendChild(banner);
     document.body.appendChild(o);
     els.overlay = o;
@@ -244,6 +280,7 @@ declare global {
 
   /* ── the pin → dialog ── */
   function pin(el: Element | null, anchor: { x: number; y: number }) {
+    if (state.tool === "clip") return pinClip(el, anchor);
     state.mode = "pinned";
     document.removeEventListener("mousemove", onMove, true);
     document.removeEventListener("click", onPinClick, true);
@@ -482,26 +519,28 @@ declare global {
   /* Near the pin on desktop, centred on phones; respects the keyboard via
      visualViewport (Aradea). */
   function place() {
-    if (!ui || !ui.dialog.open || !draft) return;
+    const dlg = els.dialog as HTMLDialogElement | undefined;
+    const anchor = draft?.anchor ?? clipDraft?.anchor ?? null;
+    if (!dlg || !dlg.open || (!draft && !clipDraft)) return;
     const v = window.visualViewport;
     const width = v?.width || innerWidth;
     const height = v?.height || innerHeight;
     const ox = v?.offsetLeft || 0;
     const oy = v?.offsetTop || 0;
     const m = 12;
-    ui.dialog.style.maxHeight = Math.max(120, height - m * 2) + "px";
-    const r = ui.dialog.getBoundingClientRect();
+    dlg.style.maxHeight = Math.max(120, height - m * 2) + "px";
+    const r = dlg.getBoundingClientRect();
     let x: number;
     let y: number;
-    if (width < 700 || !draft.anchor) {
+    if (width < 700 || !anchor) {
       x = ox + (width - r.width) / 2;
       y = oy + Math.max(m, (height - r.height) / 2);
     } else {
-      x = Math.max(ox + m, Math.min(draft.anchor.x + 18, ox + width - r.width - m));
-      y = Math.max(oy + m, Math.min(draft.anchor.y + 18, oy + height - r.height - m));
+      x = Math.max(ox + m, Math.min(anchor.x + 18, ox + width - r.width - m));
+      y = Math.max(oy + m, Math.min(anchor.y + 18, oy + height - r.height - m));
     }
-    ui.dialog.style.left = Math.round(x) + "px";
-    ui.dialog.style.top = Math.round(y) + "px";
+    dlg.style.left = Math.round(x) + "px";
+    dlg.style.top = Math.round(y) + "px";
   }
   window.visualViewport?.addEventListener("resize", place);
   window.visualViewport?.addEventListener("scroll", place);
@@ -679,6 +718,350 @@ declare global {
     }
   }
 
+  /* ══════════════ Clip ══════════════ */
+  let cui: {
+    dialog: HTMLDialogElement;
+    name: HTMLInputElement;
+    coll: HTMLInputElement;
+    note: HTMLTextAreaElement;
+    target: HTMLElement;
+    stats: HTMLElement;
+    shot: HTMLElement;
+    send: HTMLButtonElement;
+    widen: HTMLButtonElement;
+    narrow: HTMLButtonElement;
+    status: HTMLElement;
+    deviceChip: HTMLButtonElement;
+    nameTouched: boolean;
+  } | null = null;
+  const COLL_KEY = "imredline_collection";
+
+  function pinClip(el: Element | null, anchor: { x: number; y: number }) {
+    if (!el || el === document.body || el === document.documentElement) {
+      toast("Click a component, not the page.");
+      return;
+    }
+    state.mode = "pinned";
+    document.removeEventListener("mousemove", onMove, true);
+    document.removeEventListener("click", onPinClick, true);
+    document.removeEventListener("focusin", onFocus, true);
+    document.removeEventListener("keydown", onPickKey, true);
+    els.overlay?.remove();
+    delete els.overlay;
+    let start: Element = el;
+    while (start && !(start instanceof HTMLElement) && start.parentElement) start = start.parentElement;
+    clipDraft = {
+      requestId: uuid(),
+      el: start,
+      deepest: start,
+      narrowStack: [],
+      device: classifyDevice(),
+      viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
+      shot: null,
+      shotError: "",
+      extract: null,
+      extractError: "",
+      anchor,
+    };
+    openClipDialog(clipDraft);
+    refreshClip();
+  }
+
+  /** Re-extract and re-shoot for the current element. Cheap enough to run
+   *  on every Widen/Narrow; the shot is versioned so a stale one never lands. */
+  function refreshClip() {
+    const d = clipDraft;
+    if (!d || !cui) return;
+    const v = ++version;
+    outline(d.el);
+    const r = extractClip(d.el);
+    if ("error" in r) {
+      d.extract = null;
+      d.extractError = r.error;
+    } else {
+      d.extract = r;
+      d.extractError = "";
+    }
+    cui.target.textContent = "on " + selectorFor(d.el);
+    /* The suggested name follows Widen/Narrow until the reviewer types one. */
+    if (!cui.nameTouched) cui.name.value = suggestName(d.el);
+    cui.widen.disabled = !d.el.parentElement || d.el.parentElement === document.body;
+    cui.narrow.disabled = !d.el.firstElementChild;
+    renderClipStats(d);
+    d.shot = null;
+    d.shotError = "";
+    renderClipShot(d);
+    shotWork = (async () => {
+      try {
+        const res = await capture(d.el, {
+          loadLibrary,
+          frameElement: true,
+          marker: false,
+          maxScale: Math.min(2, devicePixelRatio || 1),
+          areaBudget: 2_400_000,
+          maskForms: false,
+        });
+        if (v !== version) return;
+        d.shot = res.dataUrl;
+        d.shotError = res.error || "";
+      } catch (e) {
+        if (v !== version) return;
+        d.shotError = (e instanceof Error && e.message) || "capture failed";
+      } finally {
+        if (v === version) renderClipShot(d);
+      }
+    })();
+  }
+
+  function widen() {
+    const d = clipDraft;
+    if (!d) return;
+    const up = d.el.parentElement;
+    if (!up || up === document.body || up === document.documentElement) return;
+    d.narrowStack.push(d.el);
+    d.el = up;
+    refreshClip();
+  }
+  function narrow() {
+    const d = clipDraft;
+    if (!d) return;
+    let next = d.narrowStack.pop() ?? null;
+    if (!next) {
+      /* Below where we started: the child on the way to what was clicked,
+         else the biggest child. */
+      for (let n: Element | null = d.deepest; n && n !== d.el; n = n.parentElement) if (n.parentElement === d.el) next = n;
+      if (!next || next === d.el) {
+        let best: Element | null = null;
+        let area = 0;
+        for (const c of Array.from(d.el.children)) {
+          if (isUi(c)) continue;
+          const b = c.getBoundingClientRect();
+          if (b.width * b.height > area) {
+            area = b.width * b.height;
+            best = c;
+          }
+        }
+        next = best;
+      }
+    }
+    if (!next) return;
+    d.el = next;
+    refreshClip();
+  }
+
+  function openClipDialog(d: ClipDraft) {
+    styles();
+    const dialog = h("dialog", "imr-dialog imr-dialog--clip") as HTMLDialogElement;
+    dialog.setAttribute("aria-label", "Clip this");
+    const form = h("form", "imr-form");
+    form.noValidate = true;
+    const head = h("div", "imr-head");
+    head.append(h("span", undefined, "✂ Clip this"));
+    const x = h("button", "imr-x", "×") as HTMLButtonElement;
+    x.type = "button";
+    x.setAttribute("aria-label", "Cancel");
+    x.onclick = () => cancel();
+    head.append(x);
+
+    const wn = h("div", "imr-wn");
+    const widenBtn = h("button", "imr-small", "↑ Widen") as HTMLButtonElement;
+    widenBtn.type = "button";
+    widenBtn.title = "Take the parent — the thing you mean is often bigger than what you clicked";
+    widenBtn.onclick = widen;
+    const narrowBtn = h("button", "imr-small", "↓ Narrow") as HTMLButtonElement;
+    narrowBtn.type = "button";
+    narrowBtn.title = "Go back down";
+    narrowBtn.onclick = narrow;
+    const target = h("span", "imr-target");
+    wn.append(widenBtn, narrowBtn, target);
+
+    const fields = h("div", "imr-fields");
+    const name = h("input", "imr-field") as HTMLInputElement;
+    name.placeholder = "name — e.g. hero, pricing-card";
+    name.maxLength = 40;
+    name.autocomplete = "off";
+    name.spellcheck = false;
+    name.value = suggestName(d.el);
+    name.setAttribute("aria-label", "Clip name");
+    const coll = h("input", "imr-field") as HTMLInputElement;
+    coll.placeholder = "collection — e.g. pema-rebuild";
+    coll.maxLength = 40;
+    coll.autocomplete = "off";
+    coll.spellcheck = false;
+    coll.setAttribute("aria-label", "Collection");
+    try {
+      coll.value = localStorage.getItem(COLL_KEY) || "";
+    } catch {}
+    fields.append(name, coll);
+
+    const note = h("textarea", "imr-note imr-note--short") as HTMLTextAreaElement;
+    note.placeholder = "Why this one? (optional)";
+    note.maxLength = 1000;
+    note.rows = 2;
+
+    const row = h("div", "imr-row");
+    const deviceChip = h("button", "imr-chip") as HTMLButtonElement;
+    deviceChip.type = "button";
+    deviceChip.title = "Which kind of screen this was clipped on. Tap to change.";
+    const syncDevice = () => {
+      deviceChip.textContent = `${deviceIcon(d.device.kind)} ${d.device.kind} · ${d.device.orientation}`;
+    };
+    deviceChip.onclick = () => {
+      d.device = { ...d.device, kind: nextKind(d.device.kind), corrected: true };
+      syncDevice();
+    };
+    row.append(deviceChip);
+    const stats = h("p", "imr-cstats");
+    stats.setAttribute("role", "status");
+    const shot = h("div", "imr-shot");
+
+    const actions = h("div", "imr-actions");
+    const sendBtn = h("button", "imr-send", "Clip") as HTMLButtonElement;
+    sendBtn.type = "submit";
+    const cancelBtn = h("button", "imr-cancel", "Cancel") as HTMLButtonElement;
+    cancelBtn.type = "button";
+    cancelBtn.onclick = () => cancel();
+    actions.append(sendBtn, cancelBtn);
+    const status = h("p", "imr-status");
+    status.setAttribute("role", "status");
+
+    form.append(head, wn, fields, note, row, stats, shot, actions, status);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      void sendClip();
+    };
+    dialog.append(form);
+    dialog.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      cancel();
+    });
+    dialog.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        void sendClip();
+        return;
+      }
+      const inText = (e.target as HTMLElement).tagName === "TEXTAREA";
+      if (!inText && e.key === "ArrowUp") {
+        e.preventDefault();
+        widen();
+      } else if (!inText && e.key === "ArrowDown") {
+        e.preventDefault();
+        narrow();
+      }
+    });
+    document.body.appendChild(dialog);
+    els.dialog = dialog;
+    name.oninput = () => {
+      if (cui) cui.nameTouched = true;
+    };
+    cui = { dialog, name, coll, note, target, stats, shot, send: sendBtn, widen: widenBtn, narrow: narrowBtn, status, deviceChip, nameTouched: false };
+    syncDevice();
+    dialog.showModal();
+    place();
+    name.focus({ preventScroll: true });
+    name.select();
+  }
+
+  function renderClipStats(d: ClipDraft) {
+    if (!cui) return;
+    const r = d.extract;
+    if (!r) {
+      cui.stats.textContent = d.extractError ? "⚠ " + d.extractError : "";
+      cui.stats.classList.toggle("is-error", Boolean(d.extractError));
+      cui.send.disabled = true;
+      return;
+    }
+    cui.stats.classList.remove("is-error");
+    const c = r.counts;
+    cui.stats.textContent =
+      `${r.bounds.width}×${r.bounds.height} · ${c.elements} element${c.elements === 1 ? "" : "s"} · ${c.images} image${c.images === 1 ? "" : "s"} · ${c.fonts} font${c.fonts === 1 ? "" : "s"} · ` +
+      (r.states === "full" ? `hover rules: readable (${c.stateRules})` : `hover rules: partly readable (${r.unreadable.length} sheet${r.unreadable.length === 1 ? "" : "s"} cross-origin)`);
+    cui.send.disabled = state.sending;
+    place();
+  }
+  function renderClipShot(d: ClipDraft) {
+    if (!cui) return;
+    cui.shot.replaceChildren();
+    if (d.shot) {
+      const img = h("img") as HTMLImageElement;
+      img.src = d.shot;
+      img.alt = "the component";
+      cui.shot.append(img, h("span", undefined, "Screenshot ready"));
+    } else if (d.shotError) cui.shot.append(h("span", undefined, "No screenshot — " + d.shotError + ". The clip still goes."));
+    else cui.shot.append(h("span", undefined, "Preparing the screenshot…"));
+    place();
+  }
+  function setClipStatus(text: string, error = false) {
+    if (!cui) return;
+    cui.status.textContent = text;
+    cui.status.classList.toggle("is-error", error);
+  }
+
+  async function sendClip() {
+    const d = clipDraft;
+    if (!cui || !d || state.sending || !d.extract) return;
+    const r = d.extract;
+    const name = cui.name.value.trim() || suggestName(d.el);
+    const coll = cui.coll.value.trim();
+    try {
+      localStorage.setItem(COLL_KEY, coll);
+    } catch {}
+    state.sending = true;
+    cui.send.disabled = true;
+    cui.send.textContent = "Clipping…";
+    cui.widen.disabled = true;
+    cui.narrow.disabled = true;
+    setClipStatus(d.shot || d.shotError ? "Sending…" : "Finishing the screenshot…");
+    try {
+      await shotWork;
+      const { res, data } = await api("/clip", {
+        method: "POST",
+        json: {
+          requestId: d.requestId,
+          name,
+          collection: coll,
+          note: cui.note.value.trim(),
+          source: { url: location.href, title: document.title },
+          selector: r.selector,
+          bounds: r.bounds,
+          viewport: d.viewport,
+          device: d.device,
+          html: r.html,
+          css: r.css,
+          tokens: r.tokens,
+          assets: r.assets,
+          states: r.states,
+          unreadable: r.unreadable,
+          counts: r.counts,
+          screenshot: d.shot || undefined,
+          shotError: d.shot ? undefined : d.shotError || undefined,
+          token: CROSS ? state.token : undefined,
+        },
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (!res.ok) throw new Error(String(data.error || "Could not clip — try again."));
+      toast(
+        data.duplicate
+          ? `Already clipped as ${data.collection}/${data.slug}.`
+          : `Clipped as ${data.collection}/${data.slug}${data.hasShot ? "" : " (no screenshot)"}`,
+      );
+      state.sending = false;
+      disarm();
+    } catch (e) {
+      const timeout = (e as Error).name === "TimeoutError";
+      setClipStatus((timeout ? "The reply took too long. Try again; it will not land twice." : (e as Error).message) + " Nothing was lost.", true);
+    } finally {
+      state.sending = false;
+      if (cui) {
+        cui.send.textContent = "Clip";
+        cui.send.disabled = false;
+        cui.widen.disabled = false;
+        cui.narrow.disabled = !d.el.firstElementChild;
+      }
+    }
+  }
+
   /* ── button bar ── */
   function showBar() {
     if (els.bar) return;
@@ -692,14 +1075,21 @@ declare global {
       q.rel = "noopener";
       bar.append(q);
     }
+    const clip = h("button", "imr-clip", "✂ Clip") as HTMLButtonElement;
+    clip.type = "button";
+    clip.setAttribute("aria-pressed", "false");
+    clip.title = "Capture a component for inspiration — markup, styles, tokens, screenshot";
+    clip.onclick = () => (state.mode === "off" || state.tool !== "clip" ? arm("clip") : cancel());
+    bar.append(clip);
     const launch = h("button", "imr-launch", "🛠 Review") as HTMLButtonElement;
     launch.type = "button";
     launch.setAttribute("aria-pressed", "false");
-    launch.onclick = () => (state.mode === "off" ? arm() : cancel());
+    launch.onclick = () => (state.mode === "off" || state.tool !== "review" ? arm("review") : cancel());
     bar.append(launch);
     document.body.appendChild(bar);
     els.bar = bar;
     els.launch = launch;
+    els.clip = clip;
     document.addEventListener(
       "keydown",
       (e) => {
@@ -714,11 +1104,13 @@ declare global {
     /* "Exit review" pauses; picking-on is remembered across pages so a
        reviewer walking the site does not re-arm on every load. */
     try {
-      if (sessionStorage.getItem("imredline_armed") === "1") arm();
+      const was = sessionStorage.getItem("imredline_armed");
+      if (was === "1" || was === "review") arm("review");
+      else if (was === "clip") arm("clip");
     } catch {}
     const remember = () => {
       try {
-        sessionStorage.setItem("imredline_armed", state.mode === "off" ? "0" : "1");
+        sessionStorage.setItem("imredline_armed", state.mode === "off" ? "0" : state.tool);
       } catch {}
     };
     window.addEventListener("pagehide", remember);
@@ -762,6 +1154,13 @@ declare global {
     } catch {}
   }
   function boot() {
+    /* The bookmarklet carries the token on the script tag: there is no link
+       to click on a site nobody controls. */
+    const attrToken = me?.dataset.token;
+    if (attrToken) {
+      void validate(attrToken, true);
+      return;
+    }
     const url = new URL(location.href);
     const param = PARAMS.find((p) => url.searchParams.get(p));
     const fromUrl = param ? url.searchParams.get(param) : null;

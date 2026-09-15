@@ -9,5 +9,6 @@ export const assets: Record<string, string> = {};
 export const assetTypes: Record<string, string> = {
   "widget.js": "text/javascript; charset=utf-8",
   "queue.js": "text/javascript; charset=utf-8",
+  "clips.js": "text/javascript; charset=utf-8",
   "html2canvas.js": "text/javascript; charset=utf-8",
 };

@@ -98,3 +98,76 @@ export type QueueRow = {
   bot: { text: string; tone: "bad" | "warn" | "good" | "plain" } | null;
   pr: { number: number; url: string; state: "open" | "merged" | "closed" } | null;
 };
+
+/* ── Clip: component capture for inspiration (0.5.0) ──
+   A clip is not a report. It files no issue; it lands as a folder on the
+   clips branch that a person or a coding agent rebuilds from. */
+
+/** Orphan branch for clips. Same repo as reports unless IMREDLINE_CLIPS_REPO. */
+export const CLIPS_BRANCH = "imredline-clips";
+export const CLIP_HTML_MAX = 200_000;
+export const CLIP_CSS_MAX = 200_000;
+export const CLIP_ELEMENTS_MAX = 400;
+export const CLIP_NOTE_MAX = 1000;
+
+export type ClipToken = { value: string; count: number };
+export type ClipTokens = {
+  colors: (ClipToken & { hsl?: string; contrast?: number })[];
+  fonts: ClipToken[];
+  /** "size/line-height" in px, e.g. "56/1.05". */
+  typeScale: ClipToken[];
+  spacing: number[];
+  radii: number[];
+  shadows: ClipToken[];
+  breakpoints: string[];
+};
+
+export type ClipAsset =
+  | { kind: "image"; url: string; alt: string; rendered: [number, number]; natural: [number, number] }
+  | { kind: "background"; url: string }
+  | { kind: "font"; family: string; urls: string[] };
+
+/** What the widget POSTs to /api/clip. */
+export type ClipInput = {
+  requestId: string;
+  name: string;
+  collection: string;
+  note: string;
+  source: { url: string; title: string };
+  selector: string;
+  bounds: { width: number; height: number };
+  viewport?: Viewport;
+  device?: Device;
+  html: string;
+  css: string;
+  tokens: ClipTokens;
+  assets: ClipAsset[];
+  /** "full" when every stylesheet was readable, "partial" otherwise. */
+  states: "full" | "partial";
+  unreadable: string[];
+  counts: { elements: number; images: number; fonts: number; stateRules: number; keyframes: number };
+  screenshot?: string;
+  shotError?: string;
+  token?: string;
+  website?: string;
+};
+
+/** One row of clips/index.json. */
+export type ClipIndexEntry = {
+  collection: string;
+  slug: string;
+  name: string;
+  note: string;
+  reviewer: string;
+  source: { host: string; url: string; title: string };
+  clippedAt: string;
+  device: string | null;
+  viewport: string | null;
+  bounds: [number, number];
+  states: "full" | "partial";
+  counts: ClipInput["counts"];
+  colors: string[];
+  fonts: string[];
+  screenshot: string | null;
+  path: string;
+};

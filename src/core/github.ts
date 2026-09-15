@@ -21,9 +21,11 @@ export class GitHub {
   constructor(
     env: Env = process.env,
     private fetchImpl: Fetch = fetch,
+    /** Another repo under the same token — the clips swipe-file. */
+    repoOverride?: string,
   ) {
     const c = config(env);
-    this.repo = c.githubRepo;
+    this.repo = repoOverride || c.githubRepo;
     this.token = c.githubToken;
   }
 
@@ -92,11 +94,71 @@ export class GitHub {
     }
   }
 
-  /** Raw bytes of an asset, for the admin-only proxy. */
-  async readAsset(path: string): Promise<ArrayBuffer | null> {
+  /** Raw bytes of a file on a branch (assets branch by default), for the
+   *  reviewer-gated proxies. */
+  async readAsset(path: string, branch: string = ASSETS_BRANCH): Promise<ArrayBuffer | null> {
     try {
-      const res = await this.api(`/contents/${path}?ref=${ASSETS_BRANCH}`, { accept: "application/vnd.github.raw" });
+      const res = await this.api(`/contents/${path}?ref=${branch}`, { accept: "application/vnd.github.raw" });
       return res.ok ? await res.arrayBuffer() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Tip of a branch, creating it off main when missing. Null when neither
+   *  can be had. */
+  async branchTip(branch: string): Promise<string | null> {
+    try {
+      const ref = await this.api(`/git/ref/heads/${branch}`);
+      if (ref.ok) return ((await ref.json()) as { object?: { sha?: string } })?.object?.sha ?? null;
+      if (ref.status !== 404) return null;
+      const main = await this.api("/git/ref/heads/main");
+      if (!main.ok) return null;
+      const sha = ((await main.json()) as { object?: { sha?: string } })?.object?.sha;
+      if (!sha) return null;
+      const made = await this.api("/git/refs", { method: "POST", body: { ref: `refs/heads/${branch}`, sha } });
+      if (made.ok) return sha;
+      if (made.status !== 422) return null;
+      const again = await this.api(`/git/ref/heads/${branch}`);
+      return again.ok ? (((await again.json()) as { object?: { sha?: string } })?.object?.sha ?? null) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Several files, ONE commit (Git Data API: blobs → tree → commit → ref).
+   * A clip is seven files and an index; seven Contents-API commits per clip
+   * would make the branch history unreadable for the agent that reads it.
+   * Returns the new commit sha, or null — nothing half-lands: the ref only
+   * moves once every blob and the tree exist.
+   */
+  async commitFiles(
+    branch: string,
+    message: string,
+    files: { path: string; content: string; encoding?: "utf-8" | "base64" }[],
+  ): Promise<string | null> {
+    try {
+      const parent = await this.branchTip(branch);
+      if (!parent) return null;
+      const commit = await this.api(`/git/commits/${parent}`);
+      if (!commit.ok) return null;
+      const baseTree = ((await commit.json()) as { tree?: { sha?: string } })?.tree?.sha;
+      if (!baseTree) return null;
+      const tree: { path: string; mode: "100644"; type: "blob"; sha: string }[] = [];
+      for (const f of files) {
+        const blob = await this.api("/git/blobs", { method: "POST", body: { content: f.content, encoding: f.encoding ?? "utf-8" } });
+        if (!blob.ok) return null;
+        tree.push({ path: f.path, mode: "100644", type: "blob", sha: ((await blob.json()) as { sha: string }).sha });
+      }
+      const treeRes = await this.api("/git/trees", { method: "POST", body: { base_tree: baseTree, tree } });
+      if (!treeRes.ok) return null;
+      const treeSha = ((await treeRes.json()) as { sha: string }).sha;
+      const newCommit = await this.api("/git/commits", { method: "POST", body: { message, tree: treeSha, parents: [parent] } });
+      if (!newCommit.ok) return null;
+      const sha = ((await newCommit.json()) as { sha: string }).sha;
+      const moved = await this.api(`/git/refs/heads/${branch}`, { method: "PATCH", body: { sha } });
+      return moved.ok ? sha : null;
     } catch {
       return null;
     }

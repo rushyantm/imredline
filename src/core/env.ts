@@ -18,6 +18,11 @@ export function config(env: Env = process.env) {
     site: get("IMREDLINE_SITE"),
     /** Third-party origins allowed to post (PEMA mode). Exact origins. */
     origins: get("IMREDLINE_ORIGINS").split(",").map((s) => s.trim()).filter(Boolean),
+    /** Clip: a separate swipe-file repo (owner/name). Default: the reports repo. */
+    clipsRepo: get("IMREDLINE_CLIPS_REPO"),
+    /** Clip: "*" lets the bookmarklet clip from ANY origin (session + clip
+     *  routes only; reports stay on IMREDLINE_ORIGINS). Off by default. */
+    clipAnyOrigin: get("IMREDLINE_CLIP_ORIGINS") === "*",
     /** Where minted reviewer links (hashes only) live without a database. */
     dataDir: get("IMREDLINE_DATA_DIR") || ".imredline",
     /** "1" blanks form fields in screenshots. Off by owner ruling. */
