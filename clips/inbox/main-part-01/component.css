@@ -1,0 +1,123 @@
+/* Clipped by IMRedline from www.pemawellness.com/ — computed styles folded into classes. */
+/* Classes are .c1 .c2 … in order of first use; the comment on each says what the source called it. */
+
+.c1, .c1 * { box-sizing: border-box; }
+
+.c1 { /* was: mt-15 max-w-[1360px] mx-auto hidden */
+  width: 1360px;
+  max-width: 100%;
+  margin-top: 60px;
+  color: #323333;
+  font-family: "Crimson Text", serif;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+.c2 { /* was: text-[40px] text-pemaBlue font-ivyOra py-2 */
+  margin-top: 0px;
+  margin-bottom: 0px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  color: #4a778c;
+  font-family: ivyOra, "ivyOra Fallback";
+  font-size: 40px;
+  line-height: 40px;
+  text-align: center;
+}
+.c3 { /* was: text-xl text-slateGray font-crimson text-center */
+  font-family: "Crimson Text", "Crimson Text Fallback";
+  font-size: 20px;
+  line-height: 28px;
+  text-align: center;
+}
+.c4 { /* was: p-10 */
+  padding: 40px;
+}
+.c5 { /* was: text-xl font-crimson grid grid-cols-3 */
+  display: grid;
+  margin-bottom: 12px;
+  row-gap: 8px;
+  column-gap: 8px;
+  grid-template-columns: repeat(3, minmax(0px, 1fr));
+  font-family: "Crimson Text", "Crimson Text Fallback";
+  font-size: 20px;
+  line-height: 28px;
+}
+.c6 { /* was: pb-4 pl-2 border-b transition-colors */
+  display: block;
+  width: 100%;
+  color: #4a778c;
+  border-top-width: 0px;
+  border-right-width: 0px;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: #4a778c;
+  border-left-width: 0px;
+  text-align: left;
+  transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), fill 0.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+  appearance: button;
+  padding: 0px 0px 16px 8px;
+}
+.c7 { /* was: lg:w-[70%] w-[90%] */
+  width: 70%;
+}
+.c8 { /* was: pb-4 pl-2 border-b transition-colors */
+  display: block;
+  width: 100%;
+  border-top-width: 0px;
+  border-right-width: 0px;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: #00000000;
+  border-left-width: 0px;
+  text-align: left;
+  transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), outline-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), text-decoration-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), fill 0.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+  appearance: button;
+  padding: 0px 0px 16px 8px;
+}
+.c9 { /* was: relative w-full h-[540px] overflow-hidden */
+  position: relative;
+  width: 100%;
+  height: 540px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+.c10 { /* was: object-cover absolute top-0 left-0 */
+  display: block;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  color: #00000000;
+  vertical-align: middle;
+  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  object-fit: cover;
+}
+.c11 { /* was: object-cover absolute top-0 left-0 */
+  display: block;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  opacity: 0;
+  color: #00000000;
+  vertical-align: middle;
+  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  object-fit: cover;
+}
+.c12 { /* was: w-[90%] */
+  width: 90%;
+}
+
+/* States, from readable stylesheets (2). */
+.c8:hover { color: #4a778c; }
+.c6:hover { color: #4a778c; }

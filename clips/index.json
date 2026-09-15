@@ -1,0 +1,40 @@
+[
+  {
+    "collection": "inbox",
+    "slug": "main-part-01",
+    "name": "main-part",
+    "note": "",
+    "reviewer": "rishi",
+    "source": {
+      "host": "www.pemawellness.com",
+      "url": "https://www.pemawellness.com/",
+      "title": "Best Wellness Retreats in India for Healing | Pema Wellness"
+    },
+    "clippedAt": "2026-09-15T14:04:53.830Z",
+    "device": "desktop · landscape",
+    "viewport": "1440x900",
+    "bounds": [
+      1360,
+      1494
+    ],
+    "states": "full",
+    "counts": {
+      "elements": 27,
+      "images": 6,
+      "fonts": 2,
+      "stateRules": 2,
+      "keyframes": 0
+    },
+    "colors": [
+      "#4a778c",
+      "#323333"
+    ],
+    "fonts": [
+      "Crimson Text",
+      "ivyOra"
+    ],
+    "screenshot": "clips/inbox/main-part-01/screenshot.jpg",
+    "path": "clips/inbox/main-part-01",
+    "requestId": "4ba3e7c8-3b86-4219-8fbd-2de92b1eb58d"
+  }
+]
