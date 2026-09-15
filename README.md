@@ -116,7 +116,7 @@ Nothing is fetched by the server and no image or font bytes are copied — the R
 
 **The gallery** at `/imredline/clips` — cards with screenshot, swatches and fonts; filter by collection or site; open one for the README, the preview in a sandboxed iframe, and Copy prompt / HTML / CSS / tokens. Read-only for every reviewer, like the queue.
 
-**Any site.** With `IMREDLINE_CLIP_ORIGINS=*` the gallery offers a bookmarklet. On a page that does not carry the widget, it injects it with your own token; the ✂ button appears and the clip lands in the same branch. A strict Content-Security-Policy (Linear, Apple, Stripe…) refuses the script; the bookmarklet says so instead of failing silently. A page that already runs IMRedline ignores the bookmarklet (its own widget wins).
+**Any site.** With `IMREDLINE_CLIP_ORIGINS=*` the gallery offers a bookmarklet. On a page that does not carry the widget, it injects it with your own token; the ✂ button appears and the clip lands in the same branch. A strict Content-Security-Policy (Linear, Apple, Stripe…) refuses the script; the bookmarklet says so instead of failing silently. For those sites, `skills/imredline-clip` clips by address from the owner's machine: a headless Chrome that ignores the page's CSP injects the same widget and sends the same clip. A page that already runs IMRedline ignores the bookmarklet (its own widget wins).
 
 One clip is one commit. A coding agent building a new site reads the branch — `clips/index.json` first, then the folder.
 
