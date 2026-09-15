@@ -2,7 +2,9 @@
 
 Status: **built in 0.5.0 (2026-09-15)**. The gesture, the capture, the folder,
 the gallery and the bookmarklet below are shipped; the README is the user-facing
-description. Still open: the audit skill (§ "The audit half") and the journey
+description. The audit skill (§ "The audit half") shipped the same day as
+`skills/imredline-audit/` (0.5.1: `audit.md` allowed through the file proxy,
+`audited` on the index entry, shown in the gallery). Still open: the journey
 recorder (v2). Departures from this draft, as built:
 
 - Sizing properties (`width`, `height`, `min/max-*`, `grid-template-*`,

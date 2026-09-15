@@ -388,8 +388,9 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
 
     if (path === "/api/clip-asset" && method === "GET") {
       const p = url.searchParams.get("path") || "";
-      /* Path-jail: clips/<collection>/<slug>/<one of seven files>. */
-      const m = /^clips\/([a-z0-9-]{1,40})\/([a-z0-9-]{1,48})\/(README\.md|component\.html|component\.css|tokens\.json|meta\.json|preview\.html|screenshot\.jpg)$/.exec(p);
+      /* Path-jail: clips/<collection>/<slug>/<one of the eight files> —
+         seven from the clip, audit.md from the imredline-audit skill. */
+      const m = /^clips\/([a-z0-9-]{1,40})\/([a-z0-9-]{1,48})\/(README\.md|audit\.md|component\.html|component\.css|tokens\.json|meta\.json|preview\.html|screenshot\.jpg)$/.exec(p);
       if (!m) return new Response("Bad path", { status: 400 });
       if (!githubReady(env)) return new Response("Not configured", { status: 503 });
       const buf = await new GitHub(env, opts.fetch, c.clipsRepo || undefined).readAsset(p, CLIPS_BRANCH);
@@ -455,7 +456,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
 }
 
 /** Stamped into every clip's meta.json. Kept by hand; bump with package.json. */
-export const WIDGET_VERSION = "0.5.0";
+export const WIDGET_VERSION = "0.5.1";
 
 /** A request id the widget can use; exported so tests share one generator. */
 export const newRequestId = () => randomUUID();

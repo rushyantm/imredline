@@ -120,6 +120,8 @@ Nothing is fetched by the server and no image or font bytes are copied — the R
 
 One clip is one commit. A coding agent building a new site reads the branch — `clips/index.json` first, then the folder.
 
+**The audit half** is a skill for your own Claude Code, not package code: [`skills/imredline-audit`](skills/imredline-audit/SKILL.md). `/imredline-audit clips/<collection>/<slug>` runs the mechanical checks (contrast per text run on its real background, tap targets, type scale, spacing rhythm, heading order, copy length, motion without `prefers-reduced-motion`, missing focus styles, image alt and sizing, palette sprawl, div-soup), looks at the screenshot, and writes `audit.md` into the folder — fixes before reuse, what to steal, facts checked. The gallery shows an **audited** chip and the audit under the README. With `--issues` it files one `tester-feedback` issue per fix on the site's repo, in the same body contract as a report. Install: symlink that folder into `~/.claude/skills/`. A worked example is on this repo's own `imredline-clips` branch: `clips/inbox/main-part-01`.
+
 ## The issue body is a contract
 
 ```

@@ -45,6 +45,8 @@ export function clipsPage(base: string, nonce = ""): string {
   .imc-fonts { margin-top: 6px; font-size: 11px; color: rgba(12,13,13,.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .imc-chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: rgba(12,13,13,.06); font-size: 11px; margin-right: 6px; }
   .imc-chip--warn { background: rgba(183,121,31,.1); color: #8a5a12; }
+  .imc-chip--good { background: rgba(0,120,80,.1); color: #0a6b4a; }
+  .imc-audit { border-color: rgba(0,120,80,.35); }
   .imc-empty { margin-top: 40px; color: rgba(12,13,13,.55); }
   .imc-detail { margin-top: 24px; }
   .imc-back { padding: 5px 14px; border-radius: 999px; border: 1px solid rgba(12,13,13,.15); background: #fff; font: inherit; font-size: 12px; cursor: pointer; }

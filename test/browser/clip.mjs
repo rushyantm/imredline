@@ -151,6 +151,19 @@ browser.on("context", (c) => c.on("page", (p) => {
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(OUT, "clip-03-detail.jpg"), type: "jpeg", quality: 80, fullPage: true });
   check("gallery: URL carries the clip", page.url().includes("clip=clips%2Ffixture-ideas%2Fhero-01"), page.url());
+  check("gallery: no audit section before an audit", (await page.locator(".imc-audit").count()) === 0);
+  /* The imredline-audit skill writes audit.md and stamps the index; the gallery shows both. */
+  gh.state.contents.set("imredline-clips:clips/fixture-ideas/hero-01/audit.md", Buffer.from("# Audit — fixture-ideas/hero-01\n\nVerdict line.\n\n## Fix before reuse\n\n### Raise the CTA contrast\n`.c4 <a>` — 3.9:1. Severity: medium.\n"));
+  const idx = JSON.parse(gh.state.contents.get("imredline-clips:clips/index.json").toString());
+  idx[0].audited = new Date().toISOString();
+  gh.state.contents.set("imredline-clips:clips/index.json", Buffer.from(JSON.stringify(idx)));
+  await page.goto(`${base}/imredline/clips`);
+  await page.waitForSelector(".imc-card");
+  check("gallery: audited chip on the card", (await page.locator(".imc-chip--good").allTextContents()).includes("audited"));
+  await page.click(".imc-card");
+  await page.waitForSelector(".imc-audit h1");
+  check("gallery: audit rendered under the README", /Audit — fixture-ideas\/hero-01/.test(await page.locator(".imc-audit h1").textContent()));
+  check("gallery: Copy audit button", (await page.locator(".imc-actions button:has-text('Copy audit')").count()) === 1);
   await ctx.close();
 }
 

@@ -83,6 +83,7 @@ import type { ClipIndexEntry } from "../core/types.js";
     }
     if (c.fonts.length) body.append(h("div", "imc-fonts", c.fonts.join(" · ")));
     if (c.states === "partial") body.append(h("span", "imc-chip imc-chip--warn", "states partial"));
+    if (c.audited) body.append(h("span", "imc-chip imc-chip--good", "audited"));
     b.append(body);
     b.onclick = () => void openClip(c);
     return b;
@@ -224,6 +225,7 @@ import type { ClipIndexEntry } from "../core/types.js";
       return b;
     };
     actions.append(copyBtn("Copy prompt", "README.md"), copyBtn("Copy HTML", "component.html"), copyBtn("Copy CSS", "component.css"), copyBtn("Copy tokens", "tokens.json"));
+    if (c.audited) actions.append(copyBtn("Copy audit", "audit.md"));
     const gh = h("a", "imc-ghost", "Open on GitHub") as HTMLAnchorElement;
     gh.href = `https://github.com/${repo}/tree/${branch}/${c.path}`;
     gh.target = "_blank";
@@ -248,6 +250,14 @@ import type { ClipIndexEntry } from "../core/types.js";
     }
     const readme = await fileText(`${c.path}/README.md`);
     detailEl.append(readme ? renderMd(readme) : h("p", "imc-error", "README.md could not be loaded."));
+    if (c.audited) {
+      const audit = await fileText(`${c.path}/audit.md`);
+      if (audit) {
+        const box = renderMd(audit);
+        box.classList.add("imc-audit");
+        detailEl.append(box);
+      }
+    }
     history.replaceState({}, "", `${location.pathname}?clip=${encodeURIComponent(c.path)}${token ? `&token=${encodeURIComponent(token)}` : ""}`);
   }
 
@@ -257,7 +267,7 @@ import type { ClipIndexEntry } from "../core/types.js";
       (c) =>
         (!filter.collection || c.collection === filter.collection) &&
         (!filter.host || c.source.host === filter.host) &&
-        (!filter.q || `${c.name} ${c.slug} ${c.collection} ${c.note} ${c.source.host} ${c.source.title} ${c.fonts.join(" ")} ${c.reviewer}`.toLowerCase().includes(filter.q)),
+        (!filter.q || `${c.name} ${c.slug} ${c.collection} ${c.note} ${c.source.host} ${c.source.title} ${c.fonts.join(" ")} ${c.reviewer}${c.audited ? " audited" : ""}`.toLowerCase().includes(filter.q)),
     );
     subEl.textContent = `${clips.length} clip${clips.length === 1 ? "" : "s"} on ${repo} · ${branch}. Every folder has the markup, the CSS, a token sheet and a README written as a prompt.`;
     listEl.replaceChildren(...(shown.length ? shown.map(card) : [h("p", "imc-empty", clips.length ? "Nothing matches this filter." : "No clips yet. On any site with the widget, press ✂ Clip and click a component.")]));

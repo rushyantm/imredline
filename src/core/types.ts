@@ -170,4 +170,6 @@ export type ClipIndexEntry = {
   fonts: string[];
   screenshot: string | null;
   path: string;
+  /** ISO time the imredline-audit skill wrote audit.md, when it has. */
+  audited?: string;
 };
