@@ -646,6 +646,22 @@ export function extractClip(root: Element, options: ExtractOptions = {}): Extrac
         }
       }
     }
+    /* Lottie / dotLottie players: Webflow's data-animation-type="lottie" + data-src,
+       the <lottie-player>/<dotlottie-player> elements, and lottie-web's data-src.
+       The markup can only hold one frame; the file is what rebuilds the motion. */
+    for (const n of nodes) {
+      const el = n.el as HTMLElement;
+      const tag = n.tag;
+      const isPlayer = tag === "lottie-player" || tag === "dotlottie-player" || tag === "dotlottie-wc";
+      const isData = el.dataset?.animationType === "lottie" || (el.dataset?.src != null && /lottie|\.json(\?|$)/i.test(el.dataset.src));
+      if (!isPlayer && !isData) continue;
+      const raw = el.getAttribute("src") || el.dataset?.src || "";
+      if (!raw) continue;
+      const u = absUrl(raw);
+      if (seen.has(u)) continue;
+      seen.add(u);
+      assets.push({ kind: "lottie", url: u, player: isPlayer ? tag : "lottie-web", loop: el.hasAttribute("loop") ? el.getAttribute("loop") !== "false" : el.dataset?.loop === "1" || el.dataset?.loop === "true", autoplay: el.hasAttribute("autoplay") ? el.getAttribute("autoplay") !== "false" : el.dataset?.autoplay === "1" || el.dataset?.autoplay === "true" });
+    }
     for (const f of tokens.fonts) {
       const faces = fontFaces.filter((x) => x.family.toLowerCase() === f.value.toLowerCase());
       assets.push({ kind: "font", family: f.value, urls: Array.from(new Set(faces.flatMap((x) => x.urls))).slice(0, 8) });

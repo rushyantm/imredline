@@ -125,7 +125,9 @@ export type ClipTokens = {
 export type ClipAsset =
   | { kind: "image"; url: string; alt: string; rendered: [number, number]; natural: [number, number] }
   | { kind: "background"; url: string }
-  | { kind: "font"; family: string; urls: string[] };
+  | { kind: "font"; family: string; urls: string[] }
+  /** A Lottie / dotLottie animation: the markup holds one frame; the motion is in this file. */
+  | { kind: "lottie"; url: string; player: string; loop: boolean; autoplay: boolean };
 
 /** What the widget POSTs to /api/clip. */
 export type ClipInput = {

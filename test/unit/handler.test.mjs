@@ -239,7 +239,7 @@ const clip = (over = {}) => ({
     shadows: [],
     breakpoints: ["(max-width: 640px)"],
   },
-  assets: [{ kind: "image", url: "https://www.example.com/a.jpg", alt: "room", rendered: [360, 220], natural: [720, 440] }, { kind: "font", family: "Crimson Text", urls: [] }],
+  assets: [{ kind: "image", url: "https://www.example.com/a.jpg", alt: "room", rendered: [360, 220], natural: [720, 440] }, { kind: "font", family: "Crimson Text", urls: [] }, { kind: "lottie", url: "https://www.example.com/orbit.json", player: "lottie-web", loop: false, autoplay: true }],
   states: "full",
   unreadable: [],
   counts: { elements: 3, images: 1, fonts: 1, stateRules: 1, keyframes: 0 },
@@ -269,13 +269,14 @@ test("clip: a reviewer clips → one commit with seven files + index on the clip
   assert.ok(readme.includes("- **clipped:** ") && readme.includes(" by ravi"));
   assert.ok(readme.includes("| `#e9dfd0` | hsl(36 36% 87%) | 1 | 1.00 |"));
   assert.ok(readme.includes("**Fonts:** Crimson Text ×4"));
+  assert.ok(readme.includes("- lottie https://www.example.com/orbit.json — the markup holds ONE frame of this animation; play it with lottie-web, once, autoplay"), readme);
   assert.ok(readme.includes("- image https://www.example.com/a.jpg — rendered 360×220, natural 720×440, alt “room”"));
   assert.ok(readme.includes("Love the type scale."));
   const preview = gh.state.contents.get(dir + "preview.html").toString();
   assert.ok(preview.includes(".c2:hover { color: #ff0000; }") && preview.includes('<h1 class="c2">Make room for life</h1>'));
   const meta = JSON.parse(gh.state.contents.get(dir + "meta.json").toString());
   assert.equal(meta.reviewer, "ravi");
-  assert.equal(meta.widget, "0.5.2");
+  assert.equal(meta.widget, "0.5.3");
   assert.equal(meta.source.url, "https://www.example.com/rooms?x=1");
   const shot = gh.state.contents.get(dir + "screenshot.jpg");
   assert.ok(shot[0] === 0xff && shot[1] === 0xd8, "screenshot is a real JPEG");

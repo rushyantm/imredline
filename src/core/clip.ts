@@ -118,6 +118,9 @@ export function parseAssets(raw: unknown): ClipAsset[] {
     } else if (o.kind === "background") {
       const url = httpUrl(o.url);
       if (url) out.push({ kind: "background", url });
+    } else if (o.kind === "lottie") {
+      const url = httpUrl(o.url);
+      if (url) out.push({ kind: "lottie", url, player: clean(o.player, 40).replace(/[^\w.-]/g, ""), loop: Boolean(o.loop), autoplay: Boolean(o.autoplay) });
     } else if (o.kind === "font") {
       const family = clean(o.family, 120).replace(/[\n\t<>`]/g, "");
       const urls = (Array.isArray(o.urls) ? o.urls : []).map(httpUrl).filter(Boolean).slice(0, 8);
@@ -252,12 +255,14 @@ export function renderReadme(c: ClipInput, meta: { collection: string; slug: str
   const imgs = c.assets.filter((a) => a.kind === "image");
   const fonts = c.assets.filter((a) => a.kind === "font");
   const bgs = c.assets.filter((a) => a.kind === "background");
-  if (imgs.length || bgs.length || fonts.length) {
+  const lotties = c.assets.filter((a) => a.kind === "lottie");
+  if (imgs.length || bgs.length || fonts.length || lotties.length) {
     lines.push("");
     lines.push(`## Assets (not copied — download only if you have the right to)`);
     lines.push("");
     for (const a of imgs) if (a.kind === "image") lines.push(`- image ${a.url} — rendered ${a.rendered[0]}×${a.rendered[1]}, natural ${a.natural[0]}×${a.natural[1]}${a.alt ? `, alt “${md(a.alt)}”` : ""}`);
     for (const a of bgs) if (a.kind === "background") lines.push(`- background ${a.url}`);
+    for (const a of lotties) if (a.kind === "lottie") lines.push(`- lottie ${a.url} — the markup holds ONE frame of this animation; play it with ${a.player || "lottie-web"}${a.loop ? ", loop" : ", once"}${a.autoplay ? ", autoplay" : ", on trigger"}`);
     for (const a of fonts) if (a.kind === "font") lines.push(`- font ${a.family}${a.urls.length ? ` — ${a.urls.join(", ")}` : " (source not readable)"}`);
   }
   lines.push("");

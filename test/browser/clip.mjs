@@ -108,6 +108,8 @@ browser.on("context", (c) => c.on("page", (p) => {
   check("clip: transition kept on the cta", /transition: transform 0\.2s/.test(css), (css.match(/transition[^\n]*/g) || []).join(" | "));
   check("clip: every element carries a class, even those the source left bare", /<h1 class="c\d+" id="hero-title">/.test(html) && /<p class="c\d+">/.test(html), html);
   check("clip: no width baked onto the block h1", !/\.c2 \{[^}]*width: \d+px/.test(css));
+  const readme = gh.state.contents.get(dir + "README.md")?.toString() || "";
+  check("clip: a Lottie source is listed as an asset", new RegExp(`- lottie ${base}/anim/orbit\\.json — the markup holds ONE frame of this animation; play it with lottie-web, loop, autoplay`).test(readme), (readme.match(/- lottie[^\n]*/) || [""])[0]);
   const tokens = JSON.parse(gh.state.contents.get(dir + "tokens.json").toString());
   check("clip: tokens carry colours with contrast", tokens.colors.some((c) => c.value === "#e9dfd0") && tokens.colors.some((c) => c.value === "#1c2b26" && c.contrast > 10), JSON.stringify(tokens.colors.slice(0, 4)));
   check("clip: type scale has 48px", tokens.typeScale.some((t) => t.value.startsWith("48/")), JSON.stringify(tokens.typeScale));
@@ -116,7 +118,7 @@ browser.on("context", (c) => c.on("page", (p) => {
   check("clip: breakpoint recorded", tokens.breakpoints.includes("(max-width: 640px)"), JSON.stringify(tokens.breakpoints));
   const meta = JSON.parse(gh.state.contents.get(dir + "meta.json").toString());
   check("clip: meta has states full + reviewer", meta.states === "full" && meta.reviewer === "ravi" && meta.counts.keyframes === 1, JSON.stringify(meta.counts));
-  const readme = gh.state.contents.get(dir + "README.md")?.toString() || "";
+  const readmeL = gh.state.contents.get(dir + "README.md")?.toString() || "";
   check("clip: README is the prompt", readme.startsWith("# hero — clipped from 127.0.0.1") && readme.includes("The pill button and the serif scale.") && readme.includes("## How to rebuild this"));
   const shot = gh.state.contents.get(dir + "screenshot.jpg");
   check("clip: screenshot is a real JPEG", shot?.[0] === 0xff && shot?.[1] === 0xd8, String(shot?.length));
