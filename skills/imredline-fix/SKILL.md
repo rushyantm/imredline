@@ -59,10 +59,25 @@ Scripts live next to this file; they need `gh` signed in. Never print tokens.
    ```bash
    node "$SKILL_DIR/scripts/queue.mjs" done <owner/repo> <number> --commit <sha> --note "<one line: what changed, where>"
    ```
-   Not doing it? Say why and close it honestly:
+   **Not doing it? discard it, say why.**
    ```bash
-   node "$SKILL_DIR/scripts/queue.mjs" skip <owner/repo> <number> --why "<reason>"
+   node "$SKILL_DIR/scripts/queue.mjs" discard <owner/repo> <number> --why "<reason>"
    ```
+   This comments once, closes as **not planned**, and adds `discarded`.
+   `skip` remains an alias. The queue shows **discarded**, separate from done;
+   its admin **Restore** action reopens the issue and removes `discarded`.
+
+   For clip housekeeping, use the clips repo (`IMREDLINE_CLIPS_REPO` when
+   set, otherwise `IMREDLINE_GITHUB_REPO`):
+   ```bash
+   node "$SKILL_DIR/scripts/clips.mjs" list <owner/repo>
+   node "$SKILL_DIR/scripts/clips.mjs" discard <owner/repo> <clips/collection/slug> --why "<reason>"
+   ```
+   List prints the index as JSON. Discard removes the folder (including any
+   audit) and its index entry in **one commit**, whose SHA it prints. `--why`
+   is optional for clips; both scripts cap it at 300 characters. Undo a clip
+   discard with `git revert <sha>` on `imredline-clips`. Reports keep their
+   inspiration line. Never change the auto-fix bot's labels.
 
 7. **Report** to the user: a table of number → what changed → commit, the
    ones skipped and why, and whether the deploy happened or still needs them.
