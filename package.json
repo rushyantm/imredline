@@ -57,6 +57,7 @@
     }
   },
   "scripts": {
+    "media": "node scripts/media.mjs",
     "build": "node scripts/build.mjs",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && npm run test:unit && npm run test:browser",

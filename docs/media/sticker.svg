@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 300" width="520" height="300" role="img" aria-label="IMRedline sticker">
+  <defs>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-4 260 150)" filter="url(#drop)">
+    <!-- die-cut white border -->
+    <rect x="34" y="52" width="452" height="196" rx="34" fill="#fff"/>
+    <!-- sticker body -->
+    <rect x="44" y="62" width="432" height="176" rx="26" fill="#17201d"/>
+    <rect x="44" y="62" width="432" height="176" rx="26" fill="url(#sheen)"/>
+    <!-- pin: the thing a reviewer points at -->
+    <g transform="translate(92 120)">
+      <path d="M0-30c-15 0-27 12-27 27 0 20 27 45 27 45S27 17 27-3C27-18 15-30 0-30z" fill="#e2483d"/>
+      <circle cx="0" cy="-3" r="10" fill="#17201d"/>
+      <circle cx="0" cy="-3" r="5" fill="#fff"/>
+    </g>
+    <!-- wordmark -->
+    <text x="140" y="150" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="-2.4" fill="#fff">IM<tspan fill="#e2483d">Red</tspan>line</text>
+    <!-- the red line: one pen stroke, hand-drawn, through 'line' -->
+    <path d="M300 156c26-10 62-12 104-6 22 3 36 9 44 8" fill="none" stroke="#e2483d" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M318 168c30-6 58-6 84-3" fill="none" stroke="#e2483d" stroke-width="4" stroke-linecap="round" opacity=".85"/>
+    <!-- tagline -->
+    <text x="142" y="196" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" letter-spacing="3.2" fill="#c9b27a">POINT · SAY · FIXED</text>
+    <!-- corner marks: the scissors of ✂ Clip and the issue label -->
+    <text x="428" y="104" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#fff" opacity=".9">✂</text>
+    <rect x="384" y="196" width="76" height="22" rx="11" fill="#e2483d"/>
+    <text x="422" y="211.5" text-anchor="middle" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" letter-spacing=".6" fill="#fff">ISSUE #1</text>
+  </g>
+</svg>

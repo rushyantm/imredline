@@ -1,10 +1,18 @@
+<p align="center">
+  <img src="docs/media/sticker.svg" alt="IMRedline — point · say · fixed" width="360">
+</p>
+
 # IMRedline
 
 Point at anything on a live website, say what's wrong, and it lands as a GitHub issue — screenshot, pinned element, device, attachments and all — where a person or an AI agent picks it up and fixes it.
 
 One package. Installs the same way on every site. Reviewers need no account. GitHub is the whole backend: Issues are the queue, labels are the status, an orphan branch holds the pictures. Nothing else to host.
 
-**Status: pre-release, private.** Extracted from four production copies (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea / Pebble Beach). Public at v1.
+<p align="center">
+  <img src="docs/media/demo.gif" alt="A reviewer opens their link, clicks Review, pins a price, writes a note, sends — and the report appears in the queue" width="900">
+</p>
+
+**Status:** 0.5.x on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
 
 Community-supported. MIT.
 
@@ -84,6 +92,18 @@ Reports carry `host/path` so the issue says which site they came from. The token
 | `IMREDLINE_CLIP_ORIGINS` | `*` lets the bookmarklet clip from **any** site. Off by default. Reports are never affected. |
 
 Without the GitHub variables every write returns 503 and the widget says so. It ships dormant and loud, never silently dropping reports.
+
+## In pictures
+
+| A report being written | The queue |
+|---|---|
+| ![Report dialog pinned to a call-to-action: type, note, device chip, screenshot attached](docs/media/01-review.png) | ![Review queue with two open reports, thumbnails and Done buttons](docs/media/02-queue.png) |
+
+| ✂ Clip a component | The clips gallery |
+|---|---|
+| ![Clip dialog on a room card: Widen/Narrow, name, collection, stats, screenshot ready](docs/media/03-clip.png) | ![Clips gallery with a card, swatches, font, and the bookmarklet](docs/media/04-gallery.png) |
+
+Every picture above comes from `node scripts/media.mjs`: the real widget on the demo page in `docs/demo/`, against an in-memory GitHub. Run it to regenerate them after a UI change.
 
 ## The queue
 

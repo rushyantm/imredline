@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sable House — a small hotel by the sea</title>
+<style>
+  :root { --ink: #17201d; --cream: #f4efe6; --sand: #c9b27a; --sage: #7a9a86; --deep: #1c2b26; --rule: #e3dccd; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--ink); background: var(--cream); line-height: 1.5; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 18px 48px; background: var(--deep); color: #fff; }
+  .brand { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 14px; }
+  nav a { color: #fff; opacity: .85; margin-left: 28px; text-decoration: none; font-size: 15px; }
+  nav a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; padding: 72px 48px; }
+  .hero h1 { font-size: 56px; line-height: 1.02; letter-spacing: -0.025em; margin: 0 0 18px; font-weight: 700; }
+  .hero p { font-size: 19px; max-width: 46ch; margin: 0 0 28px; color: #3d4a45; }
+  .cta { display: inline-block; padding: 14px 26px; border-radius: 999px; background: var(--deep); color: #fff; text-decoration: none; font-weight: 600; transition: transform .2s ease, box-shadow .2s ease; box-shadow: 0 8px 24px rgba(28,43,38,.18); }
+  .cta:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(28,43,38,.24); }
+  .cta.ghost { background: transparent; color: var(--deep); box-shadow: inset 0 0 0 1.5px var(--deep); margin-left: 12px; }
+  .hero-art { aspect-ratio: 4/3; border-radius: 20px; background: linear-gradient(160deg, #8fb0a0, #5f8272 60%, #3e5a4d); position: relative; overflow: hidden; }
+  .hero-art::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: 14%; height: 34%; background: var(--sand); border-radius: 8px; opacity: .9; }
+  .hero-art::before { content: ""; position: absolute; width: 120px; height: 120px; border-radius: 50%; background: #efd58a; right: 12%; top: 12%; }
+  .rooms { padding: 56px 48px; background: #fff; }
+  .rooms h2, .rates h2 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; background: #fff; transition: transform .2s ease, box-shadow .2s ease; }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(23,32,29,.12); }
+  .card .art { aspect-ratio: 16/10; background: var(--sage); }
+  .card:nth-child(2) .art { background: var(--sand); }
+  .card:nth-child(3) .art { background: #a9bfb3; }
+  .card .body { padding: 18px 20px 22px; }
+  .card h3 { margin: 0 0 6px; font-size: 19px; }
+  .card p { margin: 0 0 12px; color: #4a5753; font-size: 15px; }
+  .price { font-weight: 700; }
+  .price small { font-weight: 400; color: #6b7873; }
+  .rates { padding: 56px 48px; }
+  .rates table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; }
+  .rates th, .rates td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--rule); }
+  .rates th { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #6b7873; background: #faf7f1; }
+  .rates tr:last-child td { border-bottom: 0; }
+  .book { padding: 56px 48px; background: #efe8db; }
+  .book form { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 14px; align-items: end; max-width: 980px; }
+  .book label { display: block; font-size: 13px; margin-bottom: 6px; color: #4a5753; }
+  .book input { width: 100%; padding: 12px 14px; border: 1px solid #b9b3a5; border-radius: 10px; font: inherit; background: #fff; }
+  .book button { padding: 13px 22px; border-radius: 10px; border: 0; background: var(--deep); color: #fff; font: inherit; font-weight: 600; }
+  footer { padding: 36px 48px; background: var(--deep); color: #cfd8d3; font-size: 14px; display: flex; justify-content: space-between; }
+  @media (max-width: 800px) { .hero, .grid, .book form { grid-template-columns: 1fr; } .hero h1 { font-size: 38px; } header, .hero, .rooms, .rates, .book, footer { padding-left: 20px; padding-right: 20px; } }
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand">Sable House</div>
+  <nav><a href="#rooms">Rooms</a><a href="#rates">Rates</a><a href="#book">Book</a><a href="#">Journal</a></nav>
+</header>
+
+<section class="hero" id="hero">
+  <div>
+    <h1 id="hero-title">Nine rooms.<br>One long beach.</h1>
+    <p>A small hotel where the day is set by the tide. Breakfast until noon, dinner from the garden, and nothing to do unless you want to.</p>
+    <a class="cta" href="#book" id="hero-cta">Check dates</a><a class="cta ghost" href="#rooms">See the rooms</a>
+  </div>
+  <div class="hero-art" role="img" aria-label="Dunes at dusk"></div>
+</section>
+
+<section class="rooms" id="rooms">
+  <h2>Rooms</h2>
+  <div class="grid">
+    <article class="card" id="room-dune"><div class="art"></div><div class="body"><h3>Dune</h3><p>Ground floor, a step from the sand. Rain shower, reading chair.</p><div class="price">$240 <small>/ night</small></div></div></article>
+    <article class="card" id="room-tide"><div class="art"></div><div class="body"><h3>Tide</h3><p>Corner room with two windows on the water and a deep bath.</p><div class="price">$310 <small>/ night</small></div></div></article>
+    <article class="card" id="room-loft"><div class="art"></div><div class="body"><h3>Loft</h3><p>Under the roof: a bed you climb to, and the best sunrise in the house.</p><div class="price">$360 <small>/ night</small></div></div></article>
+  </div>
+</section>
+
+<section class="rates" id="rates">
+  <h2>Rates &amp; seasons</h2>
+  <table>
+    <thead><tr><th>Season</th><th>Dune</th><th>Tide</th><th>Loft</th><th>Minimum stay</th></tr></thead>
+    <tbody>
+      <tr><td>Quiet · Nov – Mar</td><td>$190</td><td>$250</td><td>$290</td><td>2 nights</td></tr>
+      <tr><td>Shoulder · Apr – Jun, Sep – Oct</td><td>$240</td><td>$310</td><td>$360</td><td>2 nights</td></tr>
+      <tr><td>High · Jul – Aug</td><td>$320</td><td>$410</td><td>$470</td><td>4 nights</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="book" id="book">
+  <h2>Check dates</h2>
+  <form onsubmit="return false">
+    <div><label>Arrive</label><input value="12 Oct 2026"></div>
+    <div><label>Leave</label><input value="15 Oct 2026"></div>
+    <div><label>Guests</label><input value="2"></div>
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<footer><span>© Sable House · a demo page for IMRedline</span><span>Nothing here is real</span></footer>
+</body>
+</html>
