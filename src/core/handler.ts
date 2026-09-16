@@ -65,6 +65,13 @@ export type HandlerOptions = {
 
 export type ExtraAccess = { name: string; admin?: boolean; sites?: string[] };
 
+const hostOf = (o: string): string => {
+  try {
+    return new URL(o).host.toLowerCase();
+  } catch {
+    return "";
+  }
+};
 const json = (data: unknown, status = 200, headers: Record<string, string> = {}, cookies: string[] = []) => {
   const h = new Headers({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers });
   for (const c of cookies) h.append("Set-Cookie", c);
@@ -98,7 +105,14 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
   /* CORS for listed third-party origins only — plus, when the owner has
      switched the bookmarklet on, ANY origin for the two routes a clip needs. */
   const origin = req.headers.get("origin");
-  const sameOrigin = !origin || origin === url.origin;
+  /* Same-origin must survive a TLS-terminating proxy: Next on Railway hands us
+     http://host/… while the browser's Origin says https://host — the host is
+     what decides. x-forwarded-host wins over the Host header wins over the URL.
+     (0.5.0–0.5.3 compared full origins and withheld the session cookie on
+     every Next site behind such a proxy.) */
+  const fwdHost = (req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host).split(",")[0]!.trim().toLowerCase();
+  const originHost = origin ? hostOf(origin) : "";
+  const sameOrigin = !origin || origin === url.origin || (originHost !== "" && originHost === fwdHost);
   const clipRoute = path === "/api/session" || path === "/api/clip";
   const corsOk = Boolean(origin && !sameOrigin && (c.origins.includes(origin) || (c.clipAnyOrigin && clipRoute)));
   const cors: Record<string, string> = corsOk
@@ -456,7 +470,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
 }
 
 /** Stamped into every clip's meta.json. Kept by hand; bump with package.json. */
-export const WIDGET_VERSION = "0.5.3";
+export const WIDGET_VERSION = "0.5.4";
 
 /** A request id the widget can use; exported so tests share one generator. */
 export const newRequestId = () => randomUUID();

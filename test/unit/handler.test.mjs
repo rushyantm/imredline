@@ -61,6 +61,17 @@ test("session: a good token sets cookies; a bad one clears them; GET reads the c
   assert.ok(cookieOf(bad).includes("imredline=;"));
 });
 
+test("session: behind a TLS-terminating proxy (http URL, https Origin, same host) the cookie is still set and no CORS header leaks", async () => {
+  const res = await call("/imredline/api/session", { method: "POST", json: { token: "ravi-secret" } }, { origin: "https://site.test" });
+  assert.equal(res.status, 200);
+  assert.ok(cookieOf(res).includes("imredline=ravi-secret"), cookieOf(res));
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), null);
+  const viaHost = await handle(new Request("http://localhost:3000/imredline/api/session", { method: "POST", headers: { "Content-Type": "application/json", origin: "https://www.site.test", "x-forwarded-host": "www.site.test" }, body: JSON.stringify({ token: "ravi-secret" }) }), opts);
+  assert.ok((viaHost.headers.get("set-cookie") || "").includes("imredline=ravi-secret"));
+  const foreign = await call("/imredline/api/session", { method: "POST", json: { token: "ravi-secret" } }, { origin: "https://other.test" });
+  assert.equal(foreign.headers.get("set-cookie"), null);
+});
+
 test("report: files the issue with shot, device and samples on the assets branch", async () => {
   const res = await call("/imredline/api/report", { method: "POST", json: report() }, { cookie: "imredline=sri-secret" });
   const out = await res.json();
@@ -276,7 +287,7 @@ test("clip: a reviewer clips → one commit with seven files + index on the clip
   assert.ok(preview.includes(".c2:hover { color: #ff0000; }") && preview.includes('<h1 class="c2">Make room for life</h1>'));
   const meta = JSON.parse(gh.state.contents.get(dir + "meta.json").toString());
   assert.equal(meta.reviewer, "ravi");
-  assert.equal(meta.widget, "0.5.3");
+  assert.equal(meta.widget, "0.5.4");
   assert.equal(meta.source.url, "https://www.example.com/rooms?x=1");
   const shot = gh.state.contents.get(dir + "screenshot.jpg");
   assert.ok(shot[0] === 0xff && shot[1] === 0xd8, "screenshot is a real JPEG");
