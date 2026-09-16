@@ -112,3 +112,16 @@ test("old bodies without inspiration still parse with null", () => {
     assert.equal(parseIssue({ number: 7, html_url: "https://github.com/acme/site/issues/7", title: "[change] / — note", body, state: "open", created_at: "", labels: [] }).inspiration, null);
   }
 });
+
+for (const [name, state, state_reason, labels, status] of [
+  ["closed not planned", "closed", "not_planned", [], "discarded"],
+  ["closed with discarded label", "closed", "completed", ["discarded"], "discarded"],
+  ["legacy wontfix", "closed", null, ["wontfix"], "discarded"],
+  ["old closed without signals", "closed", undefined, [], "done"],
+  ["open wins over stale signals", "open", "not_planned", ["discarded", "wontfix"], "open"],
+]) {
+  test(`discard status: ${name}`, () => {
+    const row = parseIssue({ number: 1, html_url: "", title: "[bug] / — x", body: "", state, state_reason, created_at: "", labels: labels.map((name) => ({ name })) });
+    assert.equal(row.status, status);
+  });
+}

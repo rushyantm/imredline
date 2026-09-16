@@ -129,6 +129,7 @@ export type GhIssue = {
   title: string;
   body: string | null;
   state: string;
+  state_reason?: string | null;
   created_at: string;
   labels: { name: string }[];
   pull_request?: { html_url: string; merged_at: string | null };
@@ -179,7 +180,8 @@ export function parseIssue(issue: GhIssue, prs: Map<number, QueueRow["pr"]> = ne
     folder: `https://github.com/${refRepo}/tree/${CLIPS_BRANCH}/${ref.path}`,
   } : null;
 
-  const status: Status = issue.state === "closed" ? "done" : "open";
+  const status: Status = issue.state !== "closed" ? "open"
+    : issue.state_reason === "not_planned" || names.has("discarded") || names.has("wontfix") ? "discarded" : "done";
   return {
     number: issue.number,
     url: issue.html_url,

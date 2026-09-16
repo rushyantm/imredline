@@ -4,7 +4,7 @@
   issue that was filed and the bytes that were uploaded.
 */
 export function fakeGitHub({ repo = "acme/site", isPrivate = true, failCreate = false } = {}) {
-  const state = { issues: [], contents: new Map(), branches: new Set(["main"]), calls: [], isPrivate, failCreate, failCommit: false, commits: [] };
+  const state = { issues: [], contents: new Map(), branches: new Set(["main"]), calls: [], isPrivate, failCreate, failCommit: false, commits: [], requests: [], labels: new Set() };
   /* Git Data API state: a tip sha per branch, blobs, trees, commits. A tree
      is flattened straight into `contents` when its commit lands on a branch,
      so readAsset keeps working the same way for both APIs. */
@@ -22,6 +22,7 @@ export function fakeGitHub({ repo = "acme/site", isPrivate = true, failCreate = 
     state.calls.push(`${method} ${p}${u.search}`);
     if (!u.pathname.startsWith(`/repos/${repo}`)) return json({ message: "wrong repo" }, 404);
     const body = init.body ? JSON.parse(init.body) : null;
+    state.requests.push({ method, path: p, body });
 
     if (method === "GET" && p === "") return json({ private: state.isPrivate });
     const refGet = /^\/git\/ref\/heads\/(.+)$/.exec(p);
@@ -43,7 +44,10 @@ export function fakeGitHub({ repo = "acme/site", isPrivate = true, failCreate = 
       const commit = git.commits.get(body.sha);
       if (!state.branches.has(name) || !commit) return json({ message: "bad sha" }, 422);
       git.tips.set(name, body.sha);
-      for (const [path, blobSha] of git.trees.get(commit.tree) || []) state.contents.set(`${name}:${path}`, git.blobs.get(blobSha));
+      for (const [path, blobSha] of git.trees.get(commit.tree) || []) {
+        if (blobSha === null) state.contents.delete(`${name}:${path}`);
+        else state.contents.set(`${name}:${path}`, git.blobs.get(blobSha));
+      }
       state.commits.push({ branch: name, sha: body.sha, message: commit.message, files: (git.trees.get(commit.tree) || []).map(([path]) => path) });
       return json({ object: { sha: body.sha } });
     }
@@ -82,7 +86,11 @@ export function fakeGitHub({ repo = "acme/site", isPrivate = true, failCreate = 
       if (method === "GET") {
         const ref = u.searchParams.get("ref") || "main";
         const bytes = state.contents.get(`${ref}:${path}`);
-        if (!bytes) return new Response("not found", { status: 404 });
+        if (!bytes) {
+          const prefix = `${ref}:${path}/`;
+          const files = [...state.contents.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ path: k.slice(ref.length + 1), type: "file" }));
+          return files.length ? json(files) : new Response("not found", { status: 404 });
+        }
         return new Response(bytes, { status: 200, headers: { "Content-Type": "application/octet-stream" } });
       }
     }
@@ -105,11 +113,37 @@ export function fakeGitHub({ repo = "acme/site", isPrivate = true, failCreate = 
       state.issues.push(issue);
       return json(issue, 201);
     }
+    if (p === "/labels" && method === "POST") {
+      if (state.labels.has(body.name)) return json({ message: "exists" }, 422);
+      state.labels.add(body.name);
+      return json(body, 201);
+    }
+    const action = /^\/issues\/(\d+)\/(comments|labels)(?:\/(.+))?$/.exec(p);
+    if (action) {
+      const issue = state.issues.find((i) => i.number === Number(action[1]));
+      if (!issue) return json({ message: "no" }, 404);
+      if (method === "POST" && action[2] === "comments") {
+        (issue.comments ||= []).push(body.body);
+        return json({ body: body.body }, 201);
+      }
+      if (method === "POST" && action[2] === "labels") {
+        if (body.labels.some((l) => !state.labels.has(l))) return json({ message: "label missing" }, 404);
+        for (const name of body.labels) if (!issue.labels.some((l) => l.name === name)) issue.labels.push({ name });
+        return json(issue.labels);
+      }
+      if (method === "DELETE" && action[2] === "labels") {
+        if (!issue.labels.some((l) => l.name === action[3])) return json({ message: "no" }, 404);
+        issue.labels = issue.labels.filter((l) => l.name !== action[3]);
+        return new Response(null, { status: 204 });
+      }
+    }
     const m = /^\/issues\/(\d+)$/.exec(p);
     if (m && method === "PATCH") {
       const issue = state.issues.find((i) => i.number === Number(m[1]));
       if (!issue) return json({ message: "no" }, 404);
       if (body.state) issue.state = body.state;
+      if (body.state_reason) issue.state_reason = body.state_reason;
+      else if (body.state === "open") issue.state_reason = null;
       return json(issue);
     }
     return json({ message: `unhandled ${method} ${p}` }, 404);

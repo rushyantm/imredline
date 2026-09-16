@@ -12,7 +12,7 @@ export const DEFAULT_TYPE: ReportType = "change";
 
 /** Two, by owner ruling. Open = issue open, done = issue closed. Progress is
  *  the bot's own labels, never a hand-set middle state. */
-export const STATUSES = ["open", "done"] as const;
+export const STATUSES = ["open", "done", "discarded"] as const;
 export type Status = (typeof STATUSES)[number];
 
 /** The label the auto-fix loop watches. The widget applies this one and

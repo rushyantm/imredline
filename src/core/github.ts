@@ -136,7 +136,7 @@ export class GitHub {
   async commitFiles(
     branch: string,
     message: string,
-    files: { path: string; content: string; encoding?: "utf-8" | "base64" }[],
+    files: ({ path: string; content: string; encoding?: "utf-8" | "base64" } | { path: string; delete: true })[],
   ): Promise<string | null> {
     try {
       const parent = await this.branchTip(branch);
@@ -145,8 +145,12 @@ export class GitHub {
       if (!commit.ok) return null;
       const baseTree = ((await commit.json()) as { tree?: { sha?: string } })?.tree?.sha;
       if (!baseTree) return null;
-      const tree: { path: string; mode: "100644"; type: "blob"; sha: string }[] = [];
+      const tree: { path: string; mode: "100644"; type: "blob"; sha: string | null }[] = [];
       for (const f of files) {
+        if ("delete" in f) {
+          tree.push({ path: f.path, mode: "100644", type: "blob", sha: null });
+          continue;
+        }
         const blob = await this.api("/git/blobs", { method: "POST", body: { content: f.content, encoding: f.encoding ?? "utf-8" } });
         if (!blob.ok) return null;
         tree.push({ path: f.path, mode: "100644", type: "blob", sha: ((await blob.json()) as { sha: string }).sha });
@@ -188,8 +192,8 @@ export class GitHub {
     return (await res.json()) as GhIssue;
   }
 
-  async setState(number: number, state: "open" | "closed"): Promise<boolean> {
-    const res = await this.api(`/issues/${number}`, { method: "PATCH", body: { state } });
+  async setState(number: number, state: "open" | "closed", reason?: string): Promise<boolean> {
+    const res = await this.api(`/issues/${number}`, { method: "PATCH", body: { state, ...(reason ? { state_reason: reason } : {}) } });
     return res.ok;
   }
 

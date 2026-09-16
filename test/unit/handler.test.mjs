@@ -438,3 +438,151 @@ test("inspiration: the configured clips repo is checked and recorded, GitHub out
   const bestEffort = await handle(req(), { env, fetch: (url, init) => url.includes("meta.json") ? Promise.resolve(new Response("unavailable", { status: 503 })) : outage.fetch(url, init) });
   assert.equal(bestEffort.status, 201);
 });
+
+/* ── Discard (0.6.0) ── */
+function housekeeping(over = {}) {
+  const gh = fakeGitHub({ repo: over.IMREDLINE_CLIPS_REPO || env.IMREDLINE_GITHUB_REPO });
+  const run = (path, method, body, token = "admin-secret-token", fetch = gh.fetch) => handle(new Request(ORIGIN + "/imredline/api" + path, {
+    method, headers: { "Content-Type": "application/json", cookie: `imredline=${token}` }, body: body === undefined ? null : JSON.stringify(body),
+  }), { env: { ...env, ...over }, fetch });
+  return { gh, run };
+}
+const botLabels = ["triaged:bug", "triaged:change", "plan-approved", "pr-open", "merged", "deployed", "implement-failed"];
+function seedReport(gh) {
+  const issue = { number: 12, html_url: "https://github.com/acme/site/issues/12", title: "[bug] / — note", body: "original body", state: "open", created_at: "", labels: ["tester-feedback", ...botLabels].map((name) => ({ name })) };
+  gh.state.issues.push(issue);
+  return issue;
+}
+
+for (const why of [undefined, "Duplicate of #3", "x".repeat(300)]) {
+  test(`discard report: one comment ${why ? "with why" : "without why"}, close not planned, create and add label`, async () => {
+    const { gh, run } = housekeeping();
+    const issue = seedReport(gh);
+    const res = await run("/report/12", "PATCH", { status: "discarded", why });
+    assert.deepEqual(await res.json(), { ok: true, status: "discarded" });
+    assert.equal(issue.state, "closed");
+    assert.equal(issue.state_reason, "not_planned");
+    assert.deepEqual(issue.comments, [`Discarded from the queue by rishi${why ? ": " + why : "."}`]);
+    assert.equal(issue.body, "original body");
+    assert.deepEqual(issue.labels.map((l) => l.name), ["tester-feedback", ...botLabels, "discarded"]);
+    const calls = gh.state.requests;
+    assert.ok(calls.findIndex((r) => r.path.endsWith("/comments")) < calls.findIndex((r) => r.method === "PATCH"));
+    assert.deepEqual(calls.find((r) => r.method === "PATCH").body, { state: "closed", state_reason: "not_planned" });
+    assert.deepEqual(calls.find((r) => r.path === "/labels").body, { name: "discarded", color: "9e9e9e", description: "Discarded from the review queue" });
+    const q = await run("/queue", "GET");
+    assert.equal((await q.json()).rows[0].status, "discarded");
+  });
+}
+
+test("discard report: reviewer refused and invalid why rejected before any GitHub write", async () => {
+  const { gh, run } = housekeeping();
+  seedReport(gh);
+  assert.equal((await run("/report/12", "PATCH", { status: "discarded" }, "ravi-secret")).status, 401);
+  for (const why of ["x".repeat(301), 123, null]) assert.equal((await run("/report/12", "PATCH", { status: "discarded", why })).status, 400);
+  assert.equal(gh.state.calls.length, 0);
+});
+
+for (const mode of ["response", "network"]) {
+  test(`discard report: label ${mode} failure still reports discarded with warning`, async () => {
+    const { gh, run } = housekeeping();
+    const issue = seedReport(gh);
+    const fetch = (url, init) => {
+      if (url.endsWith("/issues/12/labels")) {
+        if (mode === "network") throw new Error("offline");
+        return new Response("no", { status: 500 });
+      }
+      return gh.fetch(url, init);
+    };
+    const res = await run("/report/12", "PATCH", { status: "discarded" }, "admin-secret-token", fetch);
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { ok: true, status: "discarded", warning: "label not applied" });
+    assert.equal(issue.state_reason, "not_planned");
+  });
+}
+
+test("discard report: comment failure prevents close; close failure does not add label", async () => {
+  for (const failed of ["comments", "close"]) {
+    const { gh, run } = housekeeping();
+    const issue = seedReport(gh);
+    const fetch = (url, init) => (failed === "comments" ? url.endsWith("/comments") : init.method === "PATCH") ? new Response("no", { status: 503 }) : gh.fetch(url, init);
+    assert.equal((await run("/report/12", "PATCH", { status: "discarded" }, "admin-secret-token", fetch)).status, 502);
+    assert.equal(issue.state, "open");
+    assert.equal(issue.labels.some((l) => l.name === "discarded"), false);
+  }
+});
+
+test("restore report: reopen, remove only discarded, tolerate an absent label", async () => {
+  const { gh, run } = housekeeping();
+  const issue = seedReport(gh);
+  issue.state = "closed";
+  issue.state_reason = "not_planned";
+  issue.labels.push({ name: "discarded" }, { name: "wontfix" });
+  for (let i = 0; i < 2; i++) {
+    const res = await run("/report/12", "PATCH", { status: "open" });
+    assert.deepEqual(await res.json(), { ok: true, status: "open" });
+  }
+  assert.equal(issue.state, "open");
+  assert.deepEqual(issue.labels.map((l) => l.name), ["tester-feedback", ...botLabels, "wontfix"]);
+  assert.ok(gh.state.calls.includes("DELETE /issues/12/labels/discarded"));
+  assert.equal(issue.comments, undefined);
+});
+
+async function seedClips(gh, repo = "acme/site") {
+  const { GitHub } = await import("../../dist/core/github.js");
+  const path = "clips/ideas/hero-01";
+  const keep = { path: "clips/ideas/keep-01", requestId: "keep-me", extra: true };
+  const index = [{ path, audited: "today" }, keep];
+  const files = ["README.md", "component.html", "component.css", "tokens.json", "meta.json", "preview.html", "screenshot.jpg", "audit.md", "extra.txt"];
+  await new GitHub(env, gh.fetch, repo).commitFiles("imredline-clips", "seed", [
+    { path: "clips/index.json", content: JSON.stringify(index) },
+    { path: `${keep.path}/meta.json`, content: "keep" },
+    ...files.map((f) => ({ path: `${path}/${f}`, content: "clip file" })),
+  ]);
+  return { path, keep, files };
+}
+
+test("discard clip: reviewer/anonymous 401, bad path 400, absent index or entry 404", async () => {
+  const { gh, run } = housekeeping();
+  for (const token of ["ravi-secret", ""]) assert.equal((await run("/clip?path=clips/ideas/hero-01", "DELETE", undefined, token)).status, 401);
+  for (const path of ["../secrets", "clips/ideas/hero-01/meta.json", "clips/../hero", "clips/ideas/" + "x".repeat(49), "clips/" + "x".repeat(41) + "/hero", "clips/ideas/hero-01/"]) {
+    assert.equal((await run(`/clip?path=${encodeURIComponent(path)}`, "DELETE")).status, 400, path);
+  }
+  assert.equal(gh.state.calls.length, 0);
+  for (const seeded of [false, true]) {
+    if (seeded) await seedClips(gh);
+    const res = await run("/clip?path=clips/ideas/missing", "DELETE");
+    assert.equal(res.status, 404);
+    assert.deepEqual(await res.json(), { error: "That clip does not exist here." });
+  }
+});
+
+for (const repo of ["acme/site", "acme/swipe"]) {
+  test(`discard clip: one commit removes every actual file and index entry on ${repo}`, async () => {
+    const { gh, run } = housekeeping({ IMREDLINE_CLIPS_REPO: repo });
+    const { path, keep, files } = await seedClips(gh, repo);
+    const before = gh.state.requests.length;
+    const res = await run(`/clip?path=${path}`, "DELETE");
+    const out = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(out));
+    assert.deepEqual(out, { ok: true, commit: gh.state.commits.at(-1).sha, path });
+    assert.equal(gh.state.commits.length, 2);
+    assert.equal(gh.state.commits.at(-1).message, "discard ideas/hero-01 (by rishi)");
+    const tree = gh.state.requests.slice(before).find((r) => r.path === "/git/trees").body.tree;
+    assert.deepEqual(tree.filter((e) => e.sha === null).map((e) => e.path).sort(), files.map((f) => `${path}/${f}`).sort());
+    for (const f of files) assert.equal(gh.state.contents.has(`imredline-clips:${path}/${f}`), false, f);
+    assert.deepEqual(JSON.parse(gh.state.contents.get("imredline-clips:clips/index.json")), [keep]);
+    assert.equal(gh.state.contents.get(`imredline-clips:${keep.path}/meta.json`).toString(), "keep");
+  });
+}
+
+test("discard clip: failed commit leaves folder and index unchanged, returns 502", async () => {
+  const { gh, run } = housekeeping();
+  const { path } = await seedClips(gh);
+  const before = new Map(gh.state.contents);
+  gh.state.failCommit = true;
+  const res = await run(`/clip?path=${path}`, "DELETE");
+  assert.equal(res.status, 502);
+  assert.equal((await res.json()).error, "GitHub refused the change — the clip is still there.");
+  assert.deepEqual(gh.state.contents, before);
+  assert.equal(gh.state.commits.length, 1);
+});

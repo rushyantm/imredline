@@ -9,11 +9,12 @@
     GET    <base>/api/session                             who am I
     DELETE <base>/api/session                             sign out
     POST   <base>/api/report                              file a report
-    PATCH  <base>/api/report/<n>  {status}                admin: open/done
+    PATCH  <base>/api/report/<n>  {status}                admin: open/done/discarded
     GET    <base>/api/queue                               reviewer: rows as JSON (read-only unless admin)
     GET    <base>/api/asset?path=shots/x.jpg              reviewer: image proxy
     GET/POST/DELETE <base>/api/reviewers                  admin: mint/revoke
     POST   <base>/api/clip                                clip a component (0.5.0)
+    DELETE <base>/api/clip?path=clips/c/s                 admin: discard a clip
     GET    <base>/api/clips                               reviewer: clips/index.json
     GET    <base>/api/clip-asset?path=clips/c/s/file      reviewer: file proxy
     GET    <base>/clips                                   the gallery page
@@ -442,9 +443,61 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       const body = await readJson();
       const status = String(body?.status || "");
       if (!(STATUSES as readonly string[]).includes(status)) return json({ error: "Unknown status." }, 400);
-      /* One call. Open/closed IS the status; nothing can half-apply. */
-      const ok = await new GitHub(env, opts.fetch).setState(Number(num), status === "done" ? "closed" : "open");
-      return ok ? json({ ok: true, status }) : json({ error: "GitHub refused the change — row unchanged." }, 502);
+      if (body?.why !== undefined && (typeof body.why !== "string" || body.why.length > 300)) return json({ error: "Why must be text, at most 300 characters." }, 400);
+      const gh = new GitHub(env, opts.fetch);
+      if (status === "discarded") {
+        const why = typeof body?.why === "string" ? body.why.trim() : "";
+        const comment = await gh.api(`/issues/${num}/comments`, { method: "POST", body: { body: `Discarded from the queue by ${me?.name || c.adminName}${why ? ": " + why : "."}` } });
+        if (!comment.ok) return json({ error: "GitHub refused the comment — row unchanged." }, 502);
+      }
+      const ok = await gh.setState(Number(num), status === "open" ? "open" : "closed", status === "discarded" ? "not_planned" : undefined);
+      if (!ok) return json({ error: "GitHub refused the change — row unchanged." }, 502);
+      /* The state is the truth even when a label write fails. Only our own
+         housekeeping label is ever changed; the bot's labels stay alone. */
+      let warning: string | undefined;
+      try {
+        if (status === "discarded") {
+          const add = () => gh.api(`/issues/${num}/labels`, { method: "POST", body: { labels: ["discarded"] } });
+          let label = await add();
+          if (label.status === 404) {
+            const made = await gh.api("/labels", { method: "POST", body: { name: "discarded", color: "9e9e9e", description: "Discarded from the review queue" } });
+            if (made.ok || made.status === 422) label = await add();
+          }
+          if (!label.ok) warning = "label not applied";
+        } else if (status === "open") {
+          const removed = await gh.api(`/issues/${num}/labels/discarded`, { method: "DELETE" });
+          if (!removed.ok && removed.status !== 404) warning = "label not removed";
+        }
+      } catch {
+        warning = status === "discarded" ? "label not applied" : "label not removed";
+      }
+      return json({ ok: true, status, ...(warning ? { warning } : {}) });
+    }
+
+    if (path === "/api/clip" && method === "DELETE") {
+      const p = url.searchParams.get("path") || "";
+      if (!/^clips\/[a-z0-9-]{1,40}\/[a-z0-9-]{1,48}$/.test(p)) return json({ error: "Bad path." }, 400);
+      if (!githubReady(env)) return json({ error: "Not configured." }, 503);
+      const gh = new GitHub(env, opts.fetch, c.clipsRepo || undefined);
+      const refused = () => json({ error: "GitHub refused the change — the clip is still there." }, 502);
+      const index = await gh.api(`/contents/clips/index.json?ref=${CLIPS_BRANCH}`, { accept: "application/vnd.github.raw" });
+      if (index.status === 404) return json({ error: "That clip does not exist here." }, 404);
+      if (!index.ok) return refused();
+      /* A destructive rewrite must not turn an unreadable index into []. */
+      const entries = JSON.parse(await index.text()) as ClipIndexEntry[];
+      if (!Array.isArray(entries)) return refused();
+      if (!entries.some((e) => e.path === p)) return json({ error: "That clip does not exist here." }, 404);
+      const folder = await gh.api(`/contents/${p}?ref=${CLIPS_BRANCH}`);
+      if (!folder.ok) return refused();
+      const files = await folder.json() as { path: string; type: string }[];
+      /* Clip folders are flat. Refuse unexpected directories rather than
+         silently leave part of a clip behind. Names come from GitHub. */
+      if (!Array.isArray(files) || !files.length || files.some((f) => f.type !== "file" || !f.path.startsWith(p + "/") || f.path.slice(p.length + 1).includes("/"))) return refused();
+      const sha = await gh.commitFiles(CLIPS_BRANCH, `discard ${p.slice(6)} (by ${me?.name || c.adminName})`, [
+        { path: "clips/index.json", content: JSON.stringify(entries.filter((e) => e.path !== p), null, 2) + "\n" },
+        ...files.map((f) => ({ path: f.path, delete: true as const })),
+      ]);
+      return sha ? json({ ok: true, commit: sha, path: p }) : refused();
     }
 
     if (path === "/api/reviewers") {
