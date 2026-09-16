@@ -287,7 +287,7 @@ test("clip: a reviewer clips → one commit with seven files + index on the clip
   assert.ok(preview.includes(".c2:hover { color: #ff0000; }") && preview.includes('<h1 class="c2">Make room for life</h1>'));
   const meta = JSON.parse(gh.state.contents.get(dir + "meta.json").toString());
   assert.equal(meta.reviewer, "ravi");
-  assert.equal(meta.widget, "0.5.4");
+  assert.equal(meta.widget, "0.6.0");
   assert.equal(meta.source.url, "https://www.example.com/rooms?x=1");
   const shot = gh.state.contents.get(dir + "screenshot.jpg");
   assert.ok(shot[0] === 0xff && shot[1] === 0xd8, "screenshot is a real JPEG");

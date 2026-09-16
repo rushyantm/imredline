@@ -12,7 +12,7 @@ One package. Installs the same way on every site. Reviewers need no account. Git
   <img src="docs/media/demo.gif" alt="A reviewer opens their link, clicks Review, pins a price, writes a note, sends — and the report appears in the queue" width="900">
 </p>
 
-**Status:** 0.5.x on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
+**Status:** 0.6.0 in this branch. The 0.5.x package is on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
 
 Community-supported. MIT.
 
@@ -145,6 +145,8 @@ Nothing is fetched by the server and no image or font bytes are copied — the R
 
 One clip is one commit. A coding agent building a new site reads the branch — `clips/index.json` first, then the folder.
 
+**Report with inspiration.** Clip first, then press **🛠 Review** on the site you want to change. Under the note, choose one of the latest 20 clips or paste a gallery link from the clip toast's **Copy link** button. The thumbnail shows your choice; **Clear** removes it. Send carries the reference into the issue, and the queue shows a **with reference** chip, thumbnail and folder link. Inspiration is optional: rebuild the idea with your own words, images and brand.
+
 **The audit half** is a skill for your own Claude Code, not package code: [`skills/imredline-audit`](skills/imredline-audit/SKILL.md). `/imredline-audit clips/<collection>/<slug>` runs the mechanical checks (contrast per text run on its real background, tap targets, type scale, spacing rhythm, heading order, copy length, motion without `prefers-reduced-motion`, missing focus styles, image alt and sizing, palette sprawl, div-soup), looks at the screenshot, and writes `audit.md` into the folder — fixes before reuse, what to steal, facts checked. The gallery shows an **audited** chip and the audit under the README. With `--issues` it files one `tester-feedback` issue per fix on the site's repo, in the same body contract as a report. Install: symlink that folder into `~/.claude/skills/`. A worked example is on this repo's own `imredline-clips` branch: `clips/inbox/main-part-01`.
 
 ## Fix the review queue from a terminal
@@ -172,10 +174,14 @@ That recording is a real run in this repo (issues #1 and #2, commits `48cb815` a
 - **element:** `section#rooms > img#room-img`
 - **viewport:** 390x844 @3x
 - **device:** phone · portrait · touch
+- **inspiration:** `clips/ideas/hero-01`
 
 </details>
 
 📷 `shots/2026-09-13T10-00-00-000Z-Asha.jpg` on `imredline-assets` — renders on the queue.
+
+📎 inspiration: https://yoursite.com/imredline/clips?clip=clips/ideas/hero-01  — folder: https://github.com/owner/repo/tree/imredline-clips/clips/ideas/hero-01
+> Inspiration only. Rebuild the idea with this site's own words, images and brand. Do not copy the source's text, images, logos, animation files or code.
 
 **Samples to guide this change**
 
@@ -185,6 +191,8 @@ That recording is a real run in this repo (issues #1 and #2, commits `48cb815` a
 https://…
 ```
 ```
+
+The optional `**inspiration:**` line adds `(owner/repo)` when the clip is in another repo. The 📎 block links to the gallery and folder; without a gallery URL its first value is `—`. Old reports have no inspiration reference.
 
 Fields never move; new ones are added as new lines. An agent that reads the issue gets: the exact element, the screen size and **which kind of device** to look at, the picture on the assets branch, and the reviewer's samples. The note and every link or path are quoted as text — a report is context, not permission to change code.
 

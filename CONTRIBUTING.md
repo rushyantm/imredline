@@ -33,7 +33,10 @@ reaches the network.
 
 **The issue body is a contract** (README § "The issue body is a contract").
 Auto-fix bots and humans parse it. Existing fields never move or change shape;
-new information is a new line. A change that breaks `parseIssue` on an issue
+new information is a new line. The optional `**inspiration:**` line (after
+`**device:**`) and the 📎 inspiration block (after the screenshot block) are
+part of this contract too. `formatIssue` and `parseIssue` must round-trip the
+path, repo, gallery URL and folder; old bodies still parse with `inspiration: null`. A change that breaks `parseIssue` on an issue
 written by an older version is a bug, not a feature — there is a test for it.
 
 The mount path `/imredline`, the env variable names, the `tester-feedback`
