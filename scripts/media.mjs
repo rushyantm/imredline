@@ -111,8 +111,18 @@ async function seed() {
   await page.waitForSelector(".imr-toast");
   await page.waitForSelector("dialog.imr-dialog--clip[open]", { state: "detached" });
   await sleep(400);
+  await file("footer span:first-child", "Idea", "Footer could carry the phone number and a map link.");
   await file("#room-tide .price", "Bug", "Tide shows $310 here but $250 in the rates table for the same season.");
   await file(".rates th:nth-child(1)", "Change", "Season names are long — keep the season word and move the months to a second, lighter line. Same quiet feel as the room card.", true);
+  /* discard the stale idea through the queue UI (0.7.0) */
+  await page.goto(`${base}/imredline/queue`);
+  await page.waitForSelector(".imq-card");
+  const stale = page.locator(".imq-card", { hasText: "Footer could carry" });
+  await stale.locator(".imq-discard button", { hasText: "Discard" }).click();
+  await stale.locator(".imq-discard-why").fill("Out of scope for this round — footer is being redesigned.");
+  await stale.locator('[aria-label="Confirm discard"]').click();
+  await page.waitForFunction(() => !document.querySelector(".imq-card .imq-discard-why"), null, { timeout: 15000 });
+  await sleep(500);
   await ctx.close();
 }
 
@@ -144,6 +154,8 @@ async function stills() {
   /* 02 — the queue */
   await page.goto(`${base}/imredline/queue`);
   await page.waitForSelector(".imq-card");
+  await page.selectOption(".imq-filters select >> nth=0", "all");
+  await page.waitForSelector(".imq-card--discarded", { timeout: 10000 });
   await sleep(400);
   await page.screenshot({ path: join(OUT, "02-queue.png") });
 
@@ -209,7 +221,23 @@ async function recording() {
   await sleep(1400);
   await page.goto(`${base}/imredline/queue`);
   await page.waitForSelector(".imq-card");
-  await sleep(2200);
+  await sleep(1600);
+  const old = page.locator(".imq-card", { hasText: "Season names are long" });
+  const dBtn = old.locator(".imq-discard button", { hasText: "Discard" });
+  const db = await dBtn.boundingBox();
+  await glide(page, db.x + db.width / 2, db.y + db.height / 2, 600);
+  await dBtn.click();
+  await sleep(400);
+  await old.locator(".imq-discard-why").click();
+  await old.locator(".imq-discard-why").type("Superseded by the new rates layout.", { delay: 30 });
+  await sleep(300);
+  const yes = old.locator('[aria-label="Confirm discard"]');
+  const yb = await yes.boundingBox();
+  await glide(page, yb.x + yb.width / 2, yb.y + yb.height / 2, 400);
+  await yes.click();
+  await sleep(1400);
+  await page.selectOption(".imq-filters select >> nth=0", "discarded");
+  await sleep(1800);
   const video = page.video();
   await ctx.close();
   const webm = await video.path();
@@ -275,7 +303,15 @@ async function clipRecording() {
   await glide(page, px, py, 600);
   await sleep(200);
   await page.mouse.click(px, py).catch(() => {});
-  await sleep(1600);
+  await sleep(1200);
+  const [dx, dy] = await centre(page, ".imc-discard button:has-text('Discard')");
+  await glide(page, dx, dy, 600);
+  await page.mouse.click(dx, dy);
+  await sleep(1300);
+  const [ncx, ncy] = await centre(page, ".imc-discard [aria-label='Cancel discard']");
+  await glide(page, ncx, ncy, 350);
+  await page.mouse.click(ncx, ncy);
+  await sleep(900);
   const video = page.video();
   await ctx.close();
   const webm = await video.path();

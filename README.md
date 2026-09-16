@@ -9,10 +9,10 @@ Point at anything on a live website, say what's wrong, and it lands as a GitHub 
 One package. Installs the same way on every site. Reviewers need no account. GitHub is the whole backend: Issues are the queue, labels are the status, an orphan branch holds the pictures. Nothing else to host.
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="A reviewer opens their link, clicks Review, pins a price, writes a note, sends — and the report appears in the queue" width="900">
+  <img src="docs/media/demo.gif" alt="A reviewer opens their link, clicks Review, pins a price, writes a note, sends — the report appears in the queue, and the admin discards a stale one with a reason" width="900">
 </p>
 
-**Status:** 0.7.0 in this branch. 0.6.0 is on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
+**Status:** 0.7.0 on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
 
 Community-supported. MIT.
 
@@ -97,7 +97,7 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 
 | A report being written | The queue |
 |---|---|
-| ![Report dialog pinned to a call-to-action: type, note, an Inspiration row with a chosen clip, device chip, screenshot attached](docs/media/01-review.png) | ![Review queue with two open reports, thumbnails, a “with reference” chip on the one that carries a clip, and Done buttons](docs/media/02-queue.png) |
+| ![Report dialog pinned to a call-to-action: type, note, an Inspiration row with a chosen clip, device chip, screenshot attached](docs/media/01-review.png) | ![Review queue on the All filter: two open reports with Done and Discard, a muted discarded one with Restore, a “with reference” chip on the report that carries a clip](docs/media/02-queue.png) |
 
 | ✂ Clip a component | The clips gallery |
 |---|---|
@@ -107,7 +107,13 @@ Every picture above comes from `npm run media`: the real widget on the demo page
 
 ## The queue
 
-`/imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Any reviewer can open it too — through the **Queue** button on the widget, or with their own link's token — and sees every report and screenshot **read-only**. Open / Done is the issue's open / closed state — one call, nothing can half-apply; only the admin can flip it. The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
+`/imredline/queue?token=<admin token>` once; after that the bare URL works in that browser. Any reviewer can open it too — through the **Queue** button on the widget, or with their own link's token — and sees every report and screenshot **read-only**. A report has one of three states, and each is plain GitHub — one call, nothing can half-apply; only the admin can flip it:
+
+| Status | On GitHub | In the queue |
+|---|---|---|
+| **open** | issue open | **Done** and **Discard** buttons |
+| **done** | issue closed as *completed* | muted, **Reopen** |
+| **discarded** | issue closed as *not planned* + label `discarded` (a comment says who and why) | muted, own filter, **Restore** | The grey chip is whatever an auto-fix bot has labelled the issue (`triaged:ok`, `pr-open`, `merged`, `deployed`, `implement-failed`…); IMRedline only reads those labels, never writes them.
 
 **Reviewer links** are minted there: name, how long the link lasts (1–90 days), optionally which site it may report on. The link is shown once; only its hash is stored. Revoke takes effect on that browser's next page load.
 
