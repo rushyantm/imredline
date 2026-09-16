@@ -52,6 +52,7 @@ type Reviewer = {
 
   let rows: QueueRow[] = [];
   let repo = "";
+  let clipsRepo = "";
   let admin = false;
   const filter = { status: "open", type: "", q: "" };
 
@@ -100,6 +101,32 @@ type Reviewer = {
     where.append(r.page + (r.element ? ` · ${r.element}` : "") + (r.viewport ? ` · ${r.viewport}` : ""));
     body.append(where);
     if (r.shotNote) body.append(h("p", "imq-where", "⚠️ " + r.shotNote));
+
+    if (r.inspiration) {
+      const ref = r.inspiration;
+      const detail = h("details", "imq-insp");
+      detail.append(h("summary", "imq-chip imq-insp-chip", "with reference"));
+      const content = h("div", "imq-insp-detail");
+      if (ref.repo === clipsRepo) {
+        const img = h("img", "imq-insp-thumb");
+        img.src = `${API}/clip-asset?path=${encodeURIComponent(ref.path + "/screenshot.jpg")}${auth("&")}`;
+        img.alt = "Inspiration screenshot";
+        img.loading = "lazy";
+        img.onclick = () => zoom(img.src);
+        content.append(img);
+      }
+      const addLink = (url: string, label: string) => {
+        const a = h("a", undefined, label);
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        content.append(a);
+      };
+      if (ref.url) addLink(ref.url, "Open inspiration");
+      addLink(ref.folder, "Open clip folder");
+      detail.append(content);
+      body.append(detail);
+    }
 
     if (r.samples.length) {
       const ul = h("ul", "imq-samples");
@@ -302,6 +329,13 @@ type Reviewer = {
     }
     rows = data.rows as QueueRow[];
     repo = String(data.repo || "");
+    clipsRepo = repo;
+    if (rows.some((r) => r.inspiration)) {
+      try {
+        const clips = await api("/clips");
+        if (clips.res.ok && typeof clips.data.repo === "string") clipsRepo = clips.data.repo;
+      } catch { /* Report cards still render when the clip list is unavailable. */ }
+    }
     for (const w of (data.warnings as string[]) || []) root!.append(h("p", "imq-warn", w));
     const filters = h("div", "imq-filters");
     const status = h("select") as HTMLSelectElement;

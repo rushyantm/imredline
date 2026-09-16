@@ -49,6 +49,10 @@ export function queuePage(base: string, nonce = ""): string {
   .imq-samples li { display: flex; align-items: center; gap: 6px; max-width: 100%; }
   .imq-samples img { width: 72px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(12,13,13,.1); cursor: zoom-in; }
   .imq-samples code { font-size: 11px; overflow-wrap: anywhere; }
+  .imq-insp { margin-top: 10px; font-size: 12px; }
+  .imq-insp-chip { display: inline-block; cursor: pointer; }
+  .imq-insp-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+  .imq-insp-thumb { width: 96px; height: 64px; object-fit: cover; object-position: top; border: 1px solid rgba(12,13,13,.12); border-radius: 6px; cursor: zoom-in; }
   .imq-actions { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .imq-status { padding: 5px 14px; border-radius: 999px; border: 0; background: #0c0d0d; color: #fff; font-size: 12px; cursor: pointer; }
   .imq-status.is-done { background: #fff; color: rgba(12,13,13,.6); border: 1px solid rgba(12,13,13,.15); }

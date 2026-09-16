@@ -39,6 +39,15 @@ export const CSS = `
 .imr-type[aria-checked="true"]{background:#1f2937;border-color:#1f2937;color:#fff}
 .imr-hint{margin:8px 0 0;font-size:12px;line-height:1.45;color:#6b6b6b}
 .imr-note{width:100%;margin-top:8px;min-height:88px;padding:9px;border:1px solid #dcdcdc;border-radius:8px;font:inherit;font-size:14px;resize:vertical;color:#0c0d0d;background:#fff}
+.imr-insp{margin:8px 0 0;padding:8px;border:1px solid #eee;border-radius:8px;min-width:0;font-size:12px}
+.imr-insp legend{padding:0 4px;color:#555;font-weight:600}
+.imr-insp-list,.imr-insp-paste{width:100%;min-width:0;padding:6px 8px;margin:0 0 6px;border:1px solid #dcdcdc;border-radius:6px;background:#fff;color:#333;font:inherit}
+.imr-insp-preview{display:inline-block;vertical-align:middle}
+.imr-insp-thumb{width:72px;height:44px;object-fit:cover;object-position:top;border:1px solid #dcdcdc;border-radius:4px}
+.imr-insp-clear{margin-left:8px;border:0;background:none;color:#b3261e;font:inherit;cursor:pointer}
+.imr-insp-status{margin:0;color:#b3261e;font-size:11px}
+.imr-copy{margin-left:10px;padding:4px 8px;border:1px solid #aaa;border-radius:6px;background:#fff;color:#0c0d0d;font:inherit;cursor:pointer}
+.imr-copy-text{display:block;margin-top:6px;width:260px;max-width:100%;font:inherit}
 .imr-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#777}
 .imr-chip{padding:2px 9px;border:1px solid #dcdcdc;border-radius:999px;background:#f6f6f6;font:inherit;font-size:11px;color:#444;cursor:pointer}
 .imr-chip:hover{border-color:#999}

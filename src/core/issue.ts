@@ -167,11 +167,11 @@ export function parseIssue(issue: GhIssue, prs: Map<number, QueueRow["pr"]> = ne
   const ref = /^- \*\*inspiration:\*\* `(?<path>clips\/[a-z0-9][a-z0-9-]{0,39}\/[a-z0-9][a-z0-9-]{0,49})`(?: \((?<repo>[\w.-]+\/[\w.-]+)\))?$/m.exec(body)?.groups;
   const ownRepo = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\//.exec(issue.html_url)?.[1] || "";
   const refRepo = ref?.repo || ownRepo;
-  const refUrl = /^📎 inspiration: (.*?)  — folder: https:\/\/github\.com\/[^\n]+$/m.exec(body)?.[1];
+  const refUrl = /^📎 inspiration: (.*)  — folder: https:\/\/github\.com\/[^\n]+$/m.exec(body)?.[1];
   const inspiration: QueueRow["inspiration"] = ref ? {
     path: ref.path!,
     repo: refRepo,
-    url: refUrl && /^https?:\/\//.test(refUrl) ? refUrl : null,
+    url: refUrl && /^https?:\/\//i.test(refUrl) ? refUrl : null,
     folder: `https://github.com/${refRepo}/tree/${CLIPS_BRANCH}/${ref.path}`,
   } : null;
 

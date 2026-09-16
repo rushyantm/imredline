@@ -92,7 +92,7 @@ test("title is capped at 120 chars", () => {
 });
 
 for (const repo of [undefined, "acme/site", "other/clips"]) {
-  for (const url of [undefined, "https://other.example/imredline/clips?clip=clips/ideas/hero-01"]) {
+  for (const url of [undefined, "https://other.example/imredline/clips?clip=clips/ideas/hero-01", "HTTPS://other.example/clips?clip=clips/ideas/hero-01"]) {
     test(`inspiration round-trip: ${repo || "default repo"}, ${url ? "with URL" : "without URL"}`, () => {
       const path = "clips/ideas/hero-01";
       const { title, body } = formatIssue({ ...draft, repo: "acme/site", inspiration: { path, repo, url } });

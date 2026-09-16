@@ -25,7 +25,7 @@
 
 import { capture, elementUnder, selectorFor } from "../capture/index.js";
 import { extractClip, suggestName, type ExtractResult } from "../clip/extract.js";
-import { DEFAULT_TYPE, NOTE_MAX, NOTE_MIN, type Device, type ReportType, type Sample } from "../core/types.js";
+import { DEFAULT_TYPE, NOTE_MAX, NOTE_MIN, type ClipIndexEntry, type Device, type ReportInput, type ReportType, type Sample } from "../core/types.js";
 import { classifyDevice, deviceIcon, nextKind } from "./device.js";
 import { canAdd, classifyAddress, sampleImage, withTimeout } from "./samples.js";
 import { CSS } from "./styles.js";
@@ -80,6 +80,9 @@ declare global {
     shotError: string;
     shotNote: string;
     samples: Sample[];
+    inspiration: ReportInput["inspiration"];
+    inspirationWork: Promise<void>;
+    inspirationError: string;
     anchor: { x: number; y: number } | null;
   };
   let draft: Draft | null = null;
@@ -124,11 +127,34 @@ declare global {
     document.head.appendChild(styleEl);
   }
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
-  function toast(msg: string) {
+  function toast(msg: string, copyLink?: string) {
     styles();
     els.toast?.remove();
     const t = h("div", "imr-toast", msg);
     t.setAttribute("role", "status");
+    if (copyLink) {
+      const copy = h("button", "imr-copy", "Copy link");
+      copy.type = "button";
+      copy.onclick = async () => {
+        clearTimeout(toastTimer);
+        try {
+          await navigator.clipboard.writeText(copyLink);
+          copy.textContent = "Copied";
+          toastTimer = setTimeout(() => t.remove(), 6000);
+        } catch {
+          /* Clipboard access can be denied on the page being clipped. Keep
+             the selected text visible so the reviewer can copy it by hand. */
+          const text = h("input", "imr-copy-text");
+          text.value = copyLink;
+          text.readOnly = true;
+          text.setAttribute("aria-label", "Clip link — copy this text");
+          copy.replaceWith(text);
+          text.focus();
+          text.select();
+        }
+      };
+      t.append(copy);
+    }
     document.body.appendChild(t);
     els.toast = t;
     clearTimeout(toastTimer);
@@ -302,6 +328,9 @@ declare global {
       shotError: "",
       shotNote: "",
       samples: [],
+      inspiration: undefined,
+      inspirationWork: Promise.resolve(),
+      inspirationError: "",
       anchor,
     };
     const d = draft;
@@ -344,7 +373,123 @@ declare global {
     deviceChip: HTMLButtonElement;
     hint: HTMLElement;
     types: HTMLButtonElement[];
+    inspiration: HTMLFieldSetElement;
   } | null = null;
+
+  const clipLink = (path: string) => `${HOST}${BASE}/clips?clip=${path}`;
+  const clipAuth = () => CROSS && state.token ? `&token=${encodeURIComponent(state.token)}` : "";
+
+  function inspirationRow(d: Draft): HTMLFieldSetElement {
+    const row = h("fieldset", "imr-insp");
+    row.append(h("legend", undefined, "Inspiration (optional)"));
+    const list = h("select", "imr-insp-list");
+    list.setAttribute("aria-label", "Choose inspiration");
+    list.hidden = true;
+    const empty = h("option", undefined, "Choose a clip…");
+    empty.value = "";
+    list.append(empty);
+    const paste = h("input", "imr-insp-paste");
+    paste.type = "text";
+    paste.placeholder = "or paste a clip link";
+    paste.setAttribute("aria-label", "or paste a clip link");
+    paste.maxLength = 500;
+    const preview = h("div", "imr-insp-preview");
+    const clear = h("button", "imr-insp-clear", "Clear");
+    clear.type = "button";
+    clear.hidden = true;
+    const status = h("p", "imr-insp-status");
+    status.setAttribute("role", "status");
+    row.append(list, paste, preview, clear, status);
+    let clips: ClipIndexEntry[] = [];
+    let repo = "";
+    let revision = 0;
+
+    const show = (path?: string) => {
+      preview.replaceChildren();
+      if (path) {
+        const img = h("img", "imr-insp-thumb");
+        img.src = `${API}/clip-asset?path=${encodeURIComponent(path + "/screenshot.jpg")}${clipAuth()}`;
+        img.alt = "Inspiration screenshot";
+        img.onerror = () => { img.remove(); place(); };
+        preview.append(img);
+      }
+      clear.hidden = !d.inspiration && !paste.value;
+      status.textContent = d.inspirationError;
+      place();
+    };
+    clear.onclick = () => {
+      revision++;
+      d.inspiration = undefined;
+      d.inspirationError = "";
+      d.inspirationWork = Promise.resolve();
+      paste.value = "";
+      list.value = "";
+      show();
+    };
+    list.onchange = () => {
+      revision++;
+      paste.value = "";
+      d.inspirationError = "";
+      d.inspirationWork = Promise.resolve();
+      const clip = clips.find((c) => c.path === list.value);
+      d.inspiration = clip ? { path: clip.path, ...(repo ? { repo } : {}), url: clipLink(clip.path) } : undefined;
+      show(clip?.screenshot ? clip.path : undefined);
+    };
+    const readPaste = async () => {
+      const rev = ++revision;
+      list.value = "";
+      d.inspiration = undefined;
+      d.inspirationError = "";
+      const value = paste.value.trim();
+      if (!value) return show();
+      let link: URL;
+      let path: string;
+      try {
+        link = new URL(value);
+        path = link.searchParams.get("clip") || "";
+        if (!["http:", "https:"].includes(link.protocol) || !/\/clips\/?$/.test(link.pathname) ||
+          !/^clips\/[a-z0-9][a-z0-9-]{0,39}\/[a-z0-9][a-z0-9-]{0,49}$/.test(path)) throw new Error();
+      } catch {
+        d.inspirationError = "Paste a gallery link with ?clip=clips/collection/name-01.";
+        return show();
+      }
+      const local = link.origin === HOST && link.pathname.replace(/\/$/, "") === BASE + "/clips";
+      d.inspiration = { path, url: value, ...(local && repo ? { repo } : {}) };
+      show(local ? path : undefined);
+      if (local) return;
+      /* Ask only the pasted host, using its own cookies. Never forward this
+         site's reviewer token to another site's API. CORS may refuse it. */
+      const endpoint = new URL(link.pathname.replace(/\/clips\/?$/, "/api/clips"), link.origin);
+      try {
+        const res = await fetch(endpoint, { credentials: "include", signal: AbortSignal.timeout(4000) });
+        const data: { repo?: unknown } = res.ok ? await res.json() : {};
+        if (rev !== revision || draft !== d) return;
+        if (typeof data.repo === "string" && /^[\w.-]+\/[\w.-]+$/.test(data.repo)) {
+          d.inspiration = { path, url: value, repo: data.repo };
+        }
+      } catch { /* The pasted link survives when the other host cannot answer. */ }
+    };
+    paste.oninput = () => { d.inspirationWork = readPaste(); };
+    paste.onkeydown = (e) => { if (e.key === "Enter") e.preventDefault(); };
+
+    void (async () => {
+      try {
+        const { res, data } = await api("/clips" + (CROSS && state.token ? `?token=${encodeURIComponent(state.token)}` : ""), { signal: AbortSignal.timeout(4000) });
+        if (!res.ok || !Array.isArray(data.clips) || draft !== d) return;
+        repo = typeof data.repo === "string" ? data.repo : "";
+        clips = (data.clips as ClipIndexEntry[]).slice().sort((a, b) => b.clippedAt.localeCompare(a.clippedAt)).slice(0, 20);
+        for (const clip of clips) {
+          const date = new Date(clip.clippedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          const opt = h("option", undefined, `${clip.name} · ${clip.collection} · ${clip.source.host} · ${date}`);
+          opt.value = clip.path;
+          list.append(opt);
+        }
+        list.hidden = !clips.length;
+        place();
+      } catch { /* With no list, the paste box is still useful. */ }
+    })();
+    return row;
+  }
 
   function openDialog(d: Draft) {
     styles();
@@ -492,7 +637,8 @@ declare global {
     const status = h("p", "imr-status");
     status.setAttribute("role", "status");
 
-    form.append(head, types, hint, note, row, shot, samples, hp, actions, status);
+    const inspiration = inspirationRow(d);
+    form.append(head, types, hint, note, inspiration, row, shot, samples, hp, actions, status);
     form.onsubmit = (e) => {
       e.preventDefault();
       void send();
@@ -504,7 +650,7 @@ declare global {
     });
     document.body.appendChild(dialog);
     els.dialog = dialog;
-    ui = { dialog, note, send: sendBtn, status, shot, list, sampleStatus, address, file, upload, addAddr, deviceChip, hint, types: typeBtns };
+    ui = { dialog, note, send: sendBtn, status, shot, list, sampleStatus, address, file, upload, addAddr, deviceChip, hint, types: typeBtns, inspiration };
 
     syncTypes();
     syncDevice();
@@ -671,8 +817,11 @@ declare global {
     ui.send.disabled = true;
     ui.send.textContent = "Sending…";
     ui.note.readOnly = true;
+    ui.inspiration.disabled = true;
     setStatus(draft.shot || draft.shotError ? "Sending…" : "Finishing the screenshot…");
     try {
+      await d.inspirationWork;
+      if (d.inspirationError) throw new Error(d.inspirationError);
       await shotWork;
       const page = CROSS ? location.host + location.pathname : location.pathname;
       const { res, data } = await api("/report", {
@@ -689,6 +838,7 @@ declare global {
           shotError: d.shot ? undefined : d.shotError || undefined,
           shotNote: d.shot ? d.shotNote || undefined : undefined,
           samples: d.samples,
+          inspiration: d.inspiration,
           token: CROSS ? state.token : undefined,
           website: (ui.dialog.querySelector(".imr-hp") as HTMLInputElement).value || undefined,
         },
@@ -713,6 +863,7 @@ declare global {
       if (ui) {
         ui.send.textContent = "Send";
         ui.note.readOnly = false;
+        ui.inspiration.disabled = false;
         renderSamples();
       }
     }
@@ -1045,6 +1196,7 @@ declare global {
         data.duplicate
           ? `Already clipped as ${data.collection}/${data.slug}.`
           : `Clipped as ${data.collection}/${data.slug}${data.hasShot ? "" : " (no screenshot)"}`,
+        clipLink(String(data.path)),
       );
       state.sending = false;
       disarm();
