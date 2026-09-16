@@ -88,8 +88,18 @@ browser.on("context", (c) => c.on("page", (p) => {
   await page.screenshot({ path: join(OUT, "clip-01-dialog.jpg"), type: "jpeg", quality: 80 });
   await page.click(".imr-dialog--clip .imr-send");
   await page.waitForSelector(".imr-toast");
-  const toast = await page.locator(".imr-toast").textContent();
+  const toast = await page.locator(".imr-toast").evaluate((el) => el.firstChild.textContent);
   check("clip: toast names the folder", toast === "Clipped as fixture-ideas/hero-01", toast);
+  await ctx.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.click(".imr-copy");
+  await page.waitForFunction(() => document.querySelector(".imr-copy")?.textContent === "Copied");
+  const galleryLink = `${base}/imredline/clips?clip=clips/fixture-ideas/hero-01`;
+  check("clip: Copy link copies the gallery link without a token", await page.evaluate(() => navigator.clipboard.readText()) === galleryLink);
+
+  /* Denial of clipboard access leaves the link selected for manual copy. */
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error("denied"); }; });
+  await page.click(".imr-copy");
+  check("clip: clipboard fallback selects the gallery link", await page.locator(".imr-copy-text").evaluate((el) => el.value === el.value.slice(el.selectionStart, el.selectionEnd) && el.value.includes("?clip=clips/fixture-ideas/hero-01")));
 
   const dir = "imredline-clips:clips/fixture-ideas/hero-01/";
   check("clip: one commit on the clips branch", gh.state.commits.length === 1 && gh.state.commits[0].branch === "imredline-clips", String(gh.state.commits.length));
@@ -123,6 +133,35 @@ browser.on("context", (c) => c.on("page", (p) => {
   const shot = gh.state.contents.get(dir + "screenshot.jpg");
   check("clip: screenshot is a real JPEG", shot?.[0] === 0xff && shot?.[1] === 0xd8, String(shot?.length));
   check("clip: collection remembered for next time", (await page.evaluate(() => localStorage.getItem("imredline_collection"))) === "Fixture Ideas");
+
+  await page.click(".imr-launch");
+  await page.click("#hero-title", { force: true });
+  await page.waitForSelector(".imr-insp-list:visible");
+  check("inspiration: list shows name, collection, source and date", /hero · fixture-ideas · 127\.0\.0\.1/.test(await page.locator(".imr-insp-list").textContent()));
+  await page.selectOption(".imr-insp-list", "clips/fixture-ideas/hero-01");
+  await page.waitForFunction(() => document.querySelector(".imr-insp-thumb")?.naturalWidth > 0);
+  check("inspiration: choosing a clip shows its thumbnail", true);
+  await page.click(".imr-insp-clear");
+  check("inspiration: Clear resets the list and thumbnail", await page.inputValue(".imr-insp-list") === "" && await page.locator(".imr-insp-thumb").count() === 0);
+  await page.fill(".imr-insp-paste", galleryLink);
+  await page.waitForFunction(() => document.querySelector(".imr-insp-thumb")?.naturalWidth > 0);
+  check("inspiration: pasting a local gallery link shows its thumbnail", true);
+  await page.click(".imr-insp-clear");
+  await page.selectOption(".imr-insp-list", "clips/fixture-ideas/hero-01");
+  await page.fill(".imr-note", "Use this clip as inspiration for the hero layout.");
+  await page.screenshot({ path: join(OUT, "clip-04-inspiration-dialog.jpg"), type: "jpeg", quality: 80 });
+  await page.click(".imr-send");
+  await page.waitForFunction(() => /Filed as/.test(document.querySelector(".imr-toast")?.textContent || ""));
+  check("inspiration: report body has the reference line and block", gh.state.issues[0]?.body.includes("- **inspiration:** `clips/fixture-ideas/hero-01`") && gh.state.issues[0]?.body.includes(`📎 inspiration: ${galleryLink}`));
+  await page.goto(`${base}/imredline/queue`);
+  await page.waitForSelector(".imq-insp-chip");
+  check("inspiration: queue card shows with reference", await page.locator(".imq-insp-chip").textContent() === "with reference");
+  await page.click(".imq-insp-chip");
+  await page.waitForFunction(() => document.querySelector(".imq-insp-thumb")?.naturalWidth > 0);
+  const refShot = await page.locator(".imq-insp-thumb").getAttribute("src");
+  check("inspiration: queue thumbnail loads through the proxy (200)", (await ctx.request.get(base + refShot)).status() === 200);
+  check("inspiration: queue links to the folder", await page.locator(".imq-insp-detail a:has-text('Open clip folder')").getAttribute("href") === "https://github.com/acme/site/tree/imredline-clips/clips/fixture-ideas/hero-01");
+  await page.screenshot({ path: join(OUT, "clip-05-inspiration-queue.jpg"), type: "jpeg", quality: 80 });
   await ctx.close();
 }
 
@@ -204,6 +243,65 @@ browser.on("context", (c) => c.on("page", (p) => {
   check("bookmarklet: source is the foreign page", meta.source.url === otherBase + "/", meta.source.url);
   await ctx.close();
   other.close();
+}
+
+/* ── 4. inspiration list limits, paste fallback and foreign repo discovery ── */
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  const entry = JSON.parse(gh.state.contents.get("imredline-clips:clips/index.json").toString())[0];
+  await page.route("**/imredline/api/clips", (route) => route.fulfill({ json: { repo: "acme/site", clips: Array.from({ length: 25 }, (_, i) => ({ ...entry, path: `clips/ideas/hero-${i}`, name: `Hero ${i}`, clippedAt: new Date(Date.UTC(2026, 8, i + 1)).toISOString() })) } }));
+  const openReport = async () => {
+    await page.goto(`${base}/?imredline=ravi-secret`);
+    await page.waitForSelector(".imr-launch");
+    await page.click(".imr-launch");
+    await page.click("#hero-title", { force: true });
+    await page.waitForSelector(".imr-insp-paste");
+  };
+  await openReport();
+  await page.waitForSelector(".imr-insp-list:visible");
+  const options = await page.locator(".imr-insp-list option").allTextContents();
+  check("inspiration: newest first, limited to 20 clips", options.length === 21 && options[1].startsWith("Hero 24 ·") && options[20].startsWith("Hero 5 ·"));
+  await page.click(".imr-cancel");
+  await page.unroute("**/imredline/api/clips");
+  await page.route(`${base}/imredline/api/clips`, (route) => route.fulfill({ status: 503, json: { error: "unavailable" } }));
+  await openReport();
+  check("inspiration: failed list leaves the paste box usable", await page.locator(".imr-insp-list").isHidden() && await page.locator(".imr-insp-paste").isVisible());
+  await page.fill(".imr-note", "Use the reference for this hero layout.");
+  await page.fill(".imr-insp-paste", "javascript:alert(1)");
+  await page.click(".imr-send");
+  await page.waitForFunction(() => /Paste a gallery link/.test(document.querySelector(".imr-status")?.textContent || ""));
+  check("inspiration: invalid pasted link keeps the report draft", await page.locator("dialog[open]").count() === 1);
+  let foreignToken = false;
+  await page.route("https://foreign.example/review/api/clips", async (route) => {
+    foreignToken ||= route.request().url().includes("token=") || Boolean(route.request().headers().authorization);
+    await route.fulfill({ json: { repo: "other/inspiration", clips: [] }, headers: { "Access-Control-Allow-Origin": base, "Access-Control-Allow-Credentials": "true" } });
+  });
+  const foreignLink = "https://foreign.example/review/clips?clip=clips/ideas/foreign-01";
+  await page.fill(".imr-insp-paste", foreignLink);
+  await page.click(".imr-send");
+  await page.waitForFunction(() => /Filed as/.test(document.querySelector(".imr-toast")?.textContent || ""));
+  check("inspiration: foreign host supplies repo without receiving this token", !foreignToken && gh.state.issues.at(-1).body.includes("`clips/ideas/foreign-01` (other/inspiration)") && gh.state.issues.at(-1).body.includes(foreignLink));
+  await page.unroute(`${base}/imredline/api/clips`);
+  await page.goto(`${base}/imredline/queue`);
+  await page.waitForSelector(".imq-insp-chip");
+  const foreign = page.locator(".imq-card").filter({ hasText: "Use the reference for this hero layout." });
+  await foreign.locator(".imq-insp-chip").click();
+  check("inspiration: foreign queue reference is a link and folder", await foreign.locator(".imq-insp-thumb").count() === 0 && await foreign.locator("a:has-text('Open inspiration')").getAttribute("href") === foreignLink);
+
+  /* No metadata from another host: preserve the pasted URL and omit repo.
+     Use an existing local path, since the server checks it when repo is absent. */
+  await page.route("https://foreign.example/review/api/clips", (route) => route.abort());
+  await openReport();
+  await page.fill(".imr-note", "Keep the pasted reference when discovery fails.");
+  const fallbackLink = "https://foreign.example/review/clips?clip=clips/fixture-ideas/hero-01";
+  await page.fill(".imr-insp-paste", fallbackLink);
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/report") && r.method() === "POST");
+  await page.click(".imr-send");
+  const payload = (await sent).postDataJSON();
+  check("inspiration: failed foreign discovery preserves URL and leaves repo empty", payload.inspiration.url === fallbackLink && !payload.inspiration.repo);
+  await page.waitForFunction(() => /Filed as/.test(document.querySelector(".imr-toast")?.textContent || ""));
+  await ctx.close();
 }
 
 await browser.close();
