@@ -5,8 +5,7 @@
   buttons to copy the HTML, the CSS or the prompt.
 
   Auth: any reviewer cookie, or ?token= on the URL (which also arms this
-  browser). Read-only for everyone — a clip is not work, there is nothing
-  to flip. The bookmarklet appears only when the server says the owner
+  browser). Admins can discard a clip from its detail view. The bookmarklet appears only when the server says the owner
   switched it on (IMREDLINE_CLIP_ORIGINS=*).
 */
 
@@ -51,6 +50,8 @@ import type { ClipIndexEntry } from "../core/types.js";
   let clips: ClipIndexEntry[] = [];
   let repo = "";
   let branch = "";
+  let admin = false;
+  let openedPath = "";
   const filter = { collection: "", host: "", q: "" };
 
   function gate(msg: string) {
@@ -183,6 +184,7 @@ import type { ClipIndexEntry } from "../core/types.js";
 
   async function openClip(c: ClipIndexEntry) {
     if (!detailEl) return;
+    openedPath = c.path;
     listEl!.hidden = true;
     filtersEl!.hidden = true;
     detailEl.hidden = false;
@@ -190,6 +192,7 @@ import type { ClipIndexEntry } from "../core/types.js";
     const back = h("button", "imc-back", "← All clips") as HTMLButtonElement;
     back.type = "button";
     back.onclick = () => {
+      openedPath = "";
       detailEl!.hidden = true;
       listEl!.hidden = false;
       filtersEl!.hidden = false;
@@ -231,7 +234,49 @@ import type { ClipIndexEntry } from "../core/types.js";
     gh.target = "_blank";
     gh.rel = "noreferrer";
     actions.append(gh);
+    if (admin) {
+      const box = h("span", "imc-discard");
+      const discard = h("button", "imc-ghost", "Discard");
+      discard.type = "button";
+      const reset = () => box.replaceChildren(discard);
+      discard.onclick = () => {
+        const yes = h("button", "imc-ghost", "✓");
+        yes.type = "button";
+        yes.setAttribute("aria-label", "Confirm discard");
+        const no = h("button", "imc-ghost", "✕");
+        no.type = "button";
+        no.setAttribute("aria-label", "Cancel discard");
+        no.onclick = () => { reset(); discard.focus(); };
+        yes.onclick = async () => {
+          yes.disabled = no.disabled = true;
+          err.textContent = "";
+          try {
+            const { res, data } = await api(`/clip?path=${encodeURIComponent(c.path)}`, { method: "DELETE" });
+            if (!res.ok) {
+              err.textContent = String(data.error || res.status);
+              return;
+            }
+            clips = clips.filter((clip) => clip.path !== c.path);
+            render();
+            back.click();
+            const toast = h("p", "imc-toast", `Discarded ${c.collection}/${c.slug}`);
+            toast.setAttribute("role", "status");
+            root!.append(toast);
+            setTimeout(() => toast.remove(), 5000);
+          } catch {
+            err.textContent = "Could not reach the server. Reload to check the clip.";
+          } finally {
+            yes.disabled = no.disabled = false;
+          }
+        };
+        box.replaceChildren(h("span", undefined, "Discard this clip?"), yes, no);
+        yes.focus();
+      };
+      reset();
+      actions.append(box);
+    }
     detailEl.append(actions, err);
+    history.replaceState({}, "", `${location.pathname}?clip=${encodeURIComponent(c.path)}${token ? `&token=${encodeURIComponent(token)}` : ""}`);
 
     /* The preview: fetched as text, rendered in a sandbox with no scripts
        and no origin — a clipped page can never touch this one. */
@@ -241,6 +286,7 @@ import type { ClipIndexEntry } from "../core/types.js";
     frame.setAttribute("loading", "lazy");
     detailEl.append(frame);
     const preview = await fileText(`${c.path}/preview.html`);
+    if (openedPath !== c.path) return;
     frame.srcdoc = preview ?? "<p style='font:14px system-ui;padding:20px'>preview.html could not be loaded.</p>";
     if (c.screenshot) {
       const img = h("img", "imc-shot") as HTMLImageElement;
@@ -249,16 +295,18 @@ import type { ClipIndexEntry } from "../core/types.js";
       detailEl.append(img);
     }
     const readme = await fileText(`${c.path}/README.md`);
+    if (openedPath !== c.path) return;
     detailEl.append(readme ? renderMd(readme) : h("p", "imc-error", "README.md could not be loaded."));
     if (c.audited) {
       const audit = await fileText(`${c.path}/audit.md`);
+      if (openedPath !== c.path) return;
       if (audit) {
         const box = renderMd(audit);
         box.classList.add("imc-audit");
         detailEl.append(box);
       }
     }
-    history.replaceState({}, "", `${location.pathname}?clip=${encodeURIComponent(c.path)}${token ? `&token=${encodeURIComponent(token)}` : ""}`);
+
   }
 
   function render() {
@@ -304,6 +352,7 @@ import type { ClipIndexEntry } from "../core/types.js";
       return;
     }
     clips = (data.clips as ClipIndexEntry[]) || [];
+    admin = Boolean(data.admin);
     repo = String(data.repo || "");
     branch = String(data.branch || "imredline-clips");
     filtersEl = h("div", "imc-filters");

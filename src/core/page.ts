@@ -34,6 +34,9 @@ export function queuePage(base: string, nonce = ""): string {
   .imq-list { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
   .imq-card { display: flex; gap: 16px; padding: 16px; border: 1px solid rgba(12,13,13,.12); border-radius: 12px; }
   @media (max-width: 640px) { .imq-card { flex-direction: column; } }
+  .imq-card--discarded { opacity: .55; }
+  .imq-discard { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
+  .imq-discard-why { min-width: 0; padding: 5px 8px; border: 1px solid rgba(12,13,13,.15); border-radius: 8px; font: inherit; }
   .imq-shot, .imq-noshot { width: 160px; height: 96px; flex: none; border-radius: 8px; }
   .imq-shot { object-fit: cover; object-position: top; border: 1px solid rgba(12,13,13,.1); cursor: zoom-in; }
   .imq-noshot { display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(12,13,13,.15); font-size: 12px; color: rgba(12,13,13,.4); }

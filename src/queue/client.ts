@@ -77,6 +77,7 @@ type Reviewer = {
 
   function card(r: QueueRow): HTMLElement {
     const c = h("div", "imq-card");
+    if (r.status === "discarded") c.classList.add("imq-card--discarded");
     if (r.shotPath) {
       const img = h("img", "imq-shot") as HTMLImageElement;
       img.src = shotUrl(r.shotPath);
@@ -113,6 +114,7 @@ type Reviewer = {
         img.alt = "Inspiration screenshot";
         img.loading = "lazy";
         img.onclick = () => zoom(img.src);
+        img.onerror = () => img.replaceWith(h("span", "imq-insp-missing", "reference discarded"));
         content.append(img);
       }
       const addLink = (url: string, label: string) => {
@@ -152,21 +154,55 @@ type Reviewer = {
     }
 
     const actions = h("div", "imq-actions");
+    if (!admin || r.status === "discarded") actions.append(h("span", "imq-chip imq-chip--" + (r.status === "done" ? "good" : "plain"), r.status));
     if (admin) {
-      const btn = h("button", "imq-status" + (r.status === "done" ? " is-done" : ""), r.status === "done" ? "Reopen" : "Done") as HTMLButtonElement;
-      btn.type = "button";
-      btn.onclick = async () => {
-        btn.disabled = true;
-        const next = r.status === "done" ? "open" : "done";
-        const { res, data } = await api(`/report/${r.number}`, { method: "PATCH", json: { status: next } });
-        btn.disabled = false;
-        if (res.ok) {
-          r.status = next;
-          render();
-        } else setError(`#${r.number}: ${data.error || res.status} — row unchanged.`);
+      const change = async (next: QueueRow["status"], why?: string) => {
+        const controls = actions.querySelectorAll("button, input");
+        controls.forEach((el) => (el as HTMLButtonElement | HTMLInputElement).disabled = true);
+        setError(null);
+        try {
+          const { res, data } = await api(`/report/${r.number}`, { method: "PATCH", json: { status: next, ...(why !== undefined ? { why } : {}) } });
+          if (res.ok) {
+            r.status = next;
+            render();
+            if (data.warning) setError(`#${r.number}: ${data.warning}.`);
+          } else setError(`#${r.number}: ${data.error || res.status}`);
+        } catch {
+          setError(`#${r.number}: Could not reach the server. Reload to check its status.`);
+        } finally {
+          controls.forEach((el) => (el as HTMLButtonElement | HTMLInputElement).disabled = false);
+        }
       };
+      const btn = h("button", "imq-status" + (r.status !== "open" ? " is-done" : ""), r.status === "discarded" ? "Restore" : r.status === "done" ? "Reopen" : "Done");
+      btn.type = "button";
+      btn.onclick = () => void change(r.status === "open" ? "done" : "open");
       actions.append(btn);
-    } else actions.append(h("span", "imq-chip imq-chip--" + (r.status === "done" ? "good" : "plain"), r.status));
+      if (r.status === "open") {
+        const box = h("span", "imq-discard");
+        const discard = h("button", "imq-status is-done", "Discard");
+        discard.type = "button";
+        const reset = () => box.replaceChildren(discard);
+        discard.onclick = () => {
+          const why = h("input", "imq-discard-why");
+          why.type = "text";
+          why.placeholder = "Why (optional)";
+          why.setAttribute("aria-label", "Why discard this report (optional)");
+          why.maxLength = 300;
+          const yes = h("button", "imq-status", "✓");
+          yes.type = "button";
+          yes.setAttribute("aria-label", "Confirm discard");
+          yes.onclick = () => void change("discarded", why.value.trim());
+          const no = h("button", "imq-status is-done", "✕");
+          no.type = "button";
+          no.setAttribute("aria-label", "Cancel discard");
+          no.onclick = () => { reset(); discard.focus(); };
+          box.replaceChildren(h("span", undefined, "Discard?"), why, yes, no);
+          why.focus();
+        };
+        reset();
+        actions.append(box);
+      }
+    }
     if (r.bot) actions.append(h("span", `imq-chip imq-chip--${r.bot.tone}`, r.bot.text));
     if (r.pr) {
       const a = h("a", "imq-pr", `PR #${r.pr.number} · ${r.pr.state}`) as HTMLAnchorElement;
@@ -196,7 +232,7 @@ type Reviewer = {
         (!filter.type || r.type === filter.type) &&
         (!filter.q || `${r.note} ${r.page} ${r.reviewer} ${r.element || ""} #${r.number}`.toLowerCase().includes(filter.q)),
     );
-    subEl.textContent = `${rows.filter((r) => r.status === "open").length} open of ${rows.length}. ${admin ? "Done writes straight to GitHub; the grey chip is what the auto-fix bot has done with it." : "The grey chip is how far each report has got."}`;
+    subEl.textContent = `${rows.filter((r) => r.status === "open").length} open · ${rows.filter((r) => r.status === "done").length} done · ${rows.filter((r) => r.status === "discarded").length} discarded of ${rows.length}`;
     listEl.replaceChildren(...(shown.length ? shown.map(card) : [h("p", "imq-empty", rows.length ? "Nothing matches this filter." : "No reports yet.")]));
   }
 
@@ -342,6 +378,7 @@ type Reviewer = {
     for (const [v, t] of [
       ["open", "Open"],
       ["done", "Done"],
+      ["discarded", "Discarded"],
       ["all", "All"],
     ]) {
       const o = h("option", undefined, t) as HTMLOptionElement;

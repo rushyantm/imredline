@@ -54,6 +54,9 @@ export function clipsPage(base: string, nonce = ""): string {
   .imc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
   .imc-actions button, .imc-actions a { padding: 6px 14px; border-radius: 999px; border: 0; background: #0c0d0d; color: #fff; font: inherit; font-size: 12px; cursor: pointer; text-decoration: none; }
   .imc-actions a.imc-ghost, .imc-actions button.imc-ghost { background: #fff; color: rgba(12,13,13,.7); border: 1px solid rgba(12,13,13,.15); }
+  .imc-discard { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
+  .imc-actions button:disabled { opacity: .5; cursor: default; }
+  .imc-toast { position: fixed; bottom: 24px; left: 24px; right: 24px; width: fit-content; max-width: calc(100% - 80px); padding: 12px 16px; border-radius: 8px; background: #0c0d0d; color: #fff; font-size: 14px; overflow-wrap: anywhere; }
   .imc-frame { width: 100%; height: 520px; border: 1px solid rgba(12,13,13,.12); border-radius: 12px; background: #f4f4f4; }
   .imc-readme { margin-top: 20px; padding: 20px; border: 1px solid rgba(12,13,13,.12); border-radius: 12px; font-size: 14px; line-height: 1.55; }
   .imc-readme h1 { font-size: 20px; margin: 0 0 12px; }
