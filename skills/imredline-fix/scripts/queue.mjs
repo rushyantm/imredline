@@ -8,8 +8,8 @@
                                                        and the screenshot saved to a temp file for you to look at
     node queue.mjs done <owner/repo> <number> [--commit <sha>] [--note "…"]
                                                      → comments what was done and closes the issue
-    node queue.mjs skip <owner/repo> <number> --why "…"
-                                                     → comments why it was not fixed, adds label "wontfix", closes
+    node queue.mjs discard <owner/repo> <number> --why "…"
+                                                     → comments why, closes as not planned, adds label "discarded" (skip is an alias)
 
   Parsing uses the package's own parseIssue, so what you see here is what the
   /imredline/queue page sees. Works from the package repo (dist/) or anywhere
@@ -24,9 +24,9 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 const [verb, repo, num, ...rest] = process.argv.slice(2);
-if (!verb || !repo || (verb !== "list" && !num)) usage();
+if (!["list", "show", "done", "discard", "skip"].includes(verb) || (!/^[\w.-]+\/[\w.-]+$/.test(repo || "") || repo.split("/").some((part) => part === "." || part === "..")) || (verb !== "list" && !/^\d+$/.test(num || ""))) usage();
 function usage() {
-  console.error("usage: queue.mjs list|show|done|skip <owner/repo> [number] [options]  (see header)");
+  console.error("usage: queue.mjs list|show|done|discard|skip <owner/repo> [number] [options]  (see header)");
   process.exit(2);
 }
 const opt = (name) => {
@@ -131,13 +131,26 @@ if (verb === "done") {
   process.exit(0);
 }
 
-if (verb === "skip") {
-  const why = opt("--why");
-  if (!why) usage();
-  gh(["api", `repos/${repo}/issues/${num}/comments`, "-f", `body=Not changing this: ${why}\n\n— imredline-fix`]);
-  gh(["api", `repos/${repo}/issues/${num}/labels`, "-f", "labels[]=wontfix"]);
-  gh(["api", "-X", "PATCH", `repos/${repo}/issues/${num}`, "-f", "state=closed", "-f", "state_reason=not_planned"]);
-  console.log(`#${num} closed as not planned.`);
+if (verb === "discard" || verb === "skip") {
+  const why = opt("--why")?.trim();
+  if (!why || why.length > 300) usage();
+  gh(["api", `repos/${repo}/issues/${num}/comments`, "-f", `body=Discarded from the queue by claude: ${why}`]);
+  gh(["issue", "close", num, "--repo", repo, "--reason", "not planned"]);
+  const label = () => gh(["issue", "edit", num, "--repo", repo, "--add-label", "discarded"]);
+  try {
+    label();
+  } catch {
+    try {
+      gh(["label", "create", "discarded", "--repo", repo, "--color", "9e9e9e", "--description", "Discarded from the review queue"]);
+    } catch { /* Another caller may already have created it; retry the add. */ }
+    try {
+      label();
+    } catch {
+      console.error(`#${num} is closed as not planned, but the discarded label was not applied.`);
+      process.exit(1);
+    }
+  }
+  console.log(`#${num} discarded (closed as not planned).`);
   process.exit(0);
 }
 usage();
