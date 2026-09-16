@@ -367,7 +367,7 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       const { reports, all, status } = await gh.listReports();
       if (status !== 200) return json({ error: `GitHub returned ${status}, so the report list can't load.`, rows: [], admin }, 502);
       const prs = all ? prsByReport(all) : new Map<number, QueueRow["pr"]>();
-      const rows = reports.map((i) => parseIssue(i, prs)).sort((a, b) => (a.status === b.status ? 0 : a.status === "open" ? -1 : 1));
+      const rows = reports.map((i) => parseIssue(i, prs)).sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status));
       const warnings: string[] = [];
       if (!all) warnings.push("PR links are off — GitHub refused the issue listing. Everything else is unaffected.");
       else if (all.length >= 100) warnings.push("Past 100 issues — PR links on the oldest reports may be missing.");
@@ -484,15 +484,16 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       if (index.status === 404) return json({ error: "That clip does not exist here." }, 404);
       if (!index.ok) return refused();
       /* A destructive rewrite must not turn an unreadable index into []. */
-      const entries = JSON.parse(await index.text()) as ClipIndexEntry[];
-      if (!Array.isArray(entries)) return refused();
+      let entries: ClipIndexEntry[];
+      try { entries = JSON.parse(await index.text()) as ClipIndexEntry[]; } catch { return refused(); }
+      if (!Array.isArray(entries) || entries.some((e) => !e || typeof e.path !== "string")) return refused();
       if (!entries.some((e) => e.path === p)) return json({ error: "That clip does not exist here." }, 404);
       const folder = await gh.api(`/contents/${p}?ref=${CLIPS_BRANCH}`);
       if (!folder.ok) return refused();
       const files = await folder.json() as { path: string; type: string }[];
       /* Clip folders are flat. Refuse unexpected directories rather than
          silently leave part of a clip behind. Names come from GitHub. */
-      if (!Array.isArray(files) || !files.length || files.some((f) => f.type !== "file" || !f.path.startsWith(p + "/") || f.path.slice(p.length + 1).includes("/"))) return refused();
+      if (!Array.isArray(files) || !files.length || files.some((f) => !f || f.type !== "file" || typeof f.path !== "string" || !f.path.startsWith(p + "/") || f.path.slice(p.length + 1).includes("/"))) return refused();
       const sha = await gh.commitFiles(CLIPS_BRANCH, `discard ${p.slice(6)} (by ${me?.name || c.adminName})`, [
         { path: "clips/index.json", content: JSON.stringify(entries.filter((e) => e.path !== p), null, 2) + "\n" },
         ...files.map((f) => ({ path: f.path, delete: true as const })),
