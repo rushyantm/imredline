@@ -70,7 +70,7 @@ if (verb === "list") {
   } else {
     console.log(`${list.length} open report${list.length === 1 ? "" : "s"} on ${repo}:\n`);
     for (const r of list) {
-      console.log(`#${r.number}  ${r.type.toUpperCase().padEnd(6)} ${r.page || "/"}  ${r.element ? "· " + r.element : ""}\n      ${r.note.split("\n")[0].slice(0, 110)}\n      by ${r.reviewer} · ${r.device || "device ?"} · ${r.createdAt.slice(0, 10)}${r.shotPath ? " · 📷" : ""}\n`);
+      console.log(`#${r.number}  ${r.type.toUpperCase().padEnd(6)} ${r.page || "/"}  ${r.element ? "· " + r.element : ""}\n      ${r.note.split("\n")[0].slice(0, 110)}\n      by ${r.reviewer} · ${r.device || "device ?"} · ${r.createdAt.slice(0, 10)}${r.shotPath ? " · 📷" : ""}${r.inspiration ? " · 📎 " + r.inspiration.path : ""}\n`);
     }
   }
   process.exit(0);
@@ -105,6 +105,7 @@ if (verb === "show") {
     samples: r.samples,
     shotNote: r.shotNote,
     screenshot: shotPath,
+    inspiration: r.inspiration,
     createdAt: r.createdAt,
   };
   if (flag("--json")) console.log(JSON.stringify(out, null, 2));
@@ -117,6 +118,11 @@ if (verb === "show") {
     if (r.samples?.length) console.log(`samples:   ${r.samples.map((s) => (s.kind === "image" ? s.name || s.value : s.value)).join(", ")}`);
     if (r.shotNote) console.log(`shot note: ${r.shotNote}`);
     console.log(`screenshot: ${shotPath || "(none)"}${shotPath ? "  ← open it; the red box marks what was pinned" : ""}`);
+    if (r.inspiration) {
+      console.log(`inspiration: ${r.inspiration.path} on ${r.inspiration.repo}  ← the reviewer attached a clip: rebuild the IDEA in this site's own words, images and brand; copy nothing from it`);
+      console.log(`             folder: ${r.inspiration.folder}`);
+      console.log(`             read it: gh api "repos/${r.inspiration.repo}/contents/${r.inspiration.path}/README.md?ref=imredline-clips" -H "Accept: application/vnd.github.raw"`);
+    }
   }
   process.exit(0);
 }

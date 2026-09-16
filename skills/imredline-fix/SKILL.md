@@ -39,6 +39,14 @@ Scripts live next to this file; they need `gh` signed in. Never print tokens.
    pinned, and the picture often says more than the note. A `shot note` line
    means the picture is the surrounding section, not the element alone.
 
+   **A report can carry inspiration** (0.6.0): an `inspiration:` line naming a
+   clip (`clips/<collection>/<slug>` on a repo). The reviewer is saying "make it
+   more like this". Read that clip's `README.md`, `component.css` and
+   `screenshot.jpg` from the `imredline-clips` branch (the `show` output prints
+   the `gh api` line) and take the *idea* — the layout, the rhythm, the
+   hierarchy. Never copy its text, images, logos, animation files or code; the
+   issue body says so and the clip's source may be someone else's site.
+
 3. **Find the code.** The selector is the rendered DOM, not the source; map it
    to the component: grep for the `id`, a distinctive class, or the visible
    text from the screenshot. The page path narrows which route.
