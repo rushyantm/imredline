@@ -97,7 +97,7 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 
 | A report being written | The queue |
 |---|---|
-| ![Report dialog pinned to a call-to-action: type, note, device chip, screenshot attached](docs/media/01-review.png) | ![Review queue with two open reports, thumbnails and Done buttons](docs/media/02-queue.png) |
+| ![Report dialog pinned to a call-to-action: type, note, an Inspiration row with a chosen clip, device chip, screenshot attached](docs/media/01-review.png) | ![Review queue with two open reports, thumbnails, a “with reference” chip on the one that carries a clip, and Done buttons](docs/media/02-queue.png) |
 
 | ✂ Clip a component | The clips gallery |
 |---|---|
@@ -151,7 +151,7 @@ One clip is one commit. A coding agent building a new site reads the branch — 
 
 ## Fix the review queue from a terminal
 
-Reports are plain GitHub issues, so any coding agent can work them. The repo ships a skill for Claude Code that makes it one sentence: **"Fix the review queue."** It lists the open reports, opens each screenshot, finds the element in the code, makes one commit per report, runs the repo's checks, ships the way the repo ships, and closes each issue with the commit in a comment.
+Reports are plain GitHub issues, so any coding agent can work them. The repo ships a skill for Claude Code that makes it one sentence: **"Fix the review queue."** It lists the open reports, opens each screenshot, finds the element in the code, makes one commit per report, runs the repo's checks, ships the way the repo ships, and closes each issue with the commit in a comment. When a report carries inspiration (a clip the reviewer picked in the dialog), the skill reads that clip's README, CSS and screenshot and rebuilds the idea in the site's own words and brand — never the source's text, images or code.
 
 <p align="center">
   <img src="docs/media/demo-fix.gif" alt="Terminal: claude › Fix the review queue — lists two reports, reads the screenshots, two one-line commits, tests pass, push, both issues closed with receipts" width="900">

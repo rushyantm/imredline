@@ -78,21 +78,24 @@ async function seed() {
   const page = await ctx.newPage();
   await page.goto(`${base}/?imredline=${TOKEN}`);
   await page.waitForSelector(".imr-launch");
-  const file = async (sel, type, note) => {
+  const file = async (sel, type, note, inspire = false) => {
     await page.click(".imr-launch");
     const [x, y] = await centre(page, sel);
     await page.mouse.click(x, y);
     await page.waitForSelector("dialog.imr-dialog[open]");
     await page.click(`.imr-type:has-text("${type}")`);
     await page.fill(".imr-note", note);
+    if (inspire) {
+      await page.waitForSelector(".imr-insp-list:not([hidden])", { timeout: 10000 });
+      await page.selectOption(".imr-insp-list", { index: 1 });
+      await page.waitForSelector(".imr-insp-thumb", { timeout: 10000 }).catch(() => {});
+    }
     await shotReady(page);
     await page.click(".imr-dialog[open] .imr-send");
     await page.waitForSelector(".imr-toast");
     await page.waitForSelector("dialog.imr-dialog[open]", { state: "detached" });
     await sleep(300);
   };
-  await file("#room-tide .price", "Bug", "Tide shows $310 here but $250 in the rates table for the same season.");
-  await file(".rates th:nth-child(1)", "Change", "Season names are long — keep the season word and move the months to a second, lighter line.");
   /* one clip */
   await page.click(".imr-clip");
   const [cx, cy] = await centre(page, "#room-dune h3");
@@ -106,6 +109,10 @@ async function seed() {
   await page.waitForFunction(() => /Screenshot ready/.test(document.querySelector(".imr-dialog--clip .imr-shot")?.textContent || ""), null, { timeout: 20000 });
   await page.click(".imr-dialog--clip .imr-send");
   await page.waitForSelector(".imr-toast");
+  await page.waitForSelector("dialog.imr-dialog--clip[open]", { state: "detached" });
+  await sleep(400);
+  await file("#room-tide .price", "Bug", "Tide shows $310 here but $250 in the rates table for the same season.");
+  await file(".rates th:nth-child(1)", "Change", "Season names are long — keep the season word and move the months to a second, lighter line. Same quiet feel as the room card.", true);
   await ctx.close();
 }
 
@@ -124,7 +131,10 @@ async function stills() {
   await page.mouse.click(x, y);
   await page.waitForSelector("dialog.imr-dialog[open]");
   await page.click('.imr-type:has-text("Change")');
-  await page.fill(".imr-note", "Make this the only button — two calls to action here split the click.");
+  await page.fill(".imr-note", "Make this the only button — two calls to action here split the click. Calm, like the room card.");
+  await page.waitForSelector(".imr-insp-list:not([hidden])", { timeout: 10000 });
+  await page.selectOption(".imr-insp-list", { index: 1 });
+  await page.waitForSelector(".imr-insp-thumb", { timeout: 10000 }).catch(() => {});
   await shotReady(page);
   await sleep(300);
   await page.screenshot({ path: join(OUT, "01-review.png") });
