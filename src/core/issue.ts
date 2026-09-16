@@ -168,10 +168,14 @@ export function parseIssue(issue: GhIssue, prs: Map<number, QueueRow["pr"]> = ne
   const ownRepo = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\//.exec(issue.html_url)?.[1] || "";
   const refRepo = ref?.repo || ownRepo;
   const refUrl = /^📎 inspiration: (.*)  — folder: https:\/\/github\.com\/[^\n]+$/m.exec(body)?.[1];
+  let galleryUrl: string | null = null;
+  try {
+    if (refUrl && ["http:", "https:"].includes(new URL(refUrl).protocol)) galleryUrl = refUrl;
+  } catch { /* A missing or unreadable gallery link does not lose the folder. */ }
   const inspiration: QueueRow["inspiration"] = ref ? {
     path: ref.path!,
     repo: refRepo,
-    url: refUrl && /^https?:\/\//i.test(refUrl) ? refUrl : null,
+    url: galleryUrl,
     folder: `https://github.com/${refRepo}/tree/${CLIPS_BRANCH}/${ref.path}`,
   } : null;
 
