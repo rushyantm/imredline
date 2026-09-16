@@ -66,6 +66,7 @@ export type ReportInput = {
   shotError?: string;
   shotNote?: string;
   samples?: Sample[];
+  inspiration?: { path: string; repo?: string; url?: string };
   /** Third-party mode only — a cookie cannot cross origins. */
   token?: string;
   /** Honeypot. Anything here = a bot. */
@@ -93,6 +94,7 @@ export type QueueRow = {
   shotPath: string | null;
   shotNote: string | null;
   samples: { kind: "image" | "link" | "path"; value: string; name?: string }[];
+  inspiration: { path: string; repo: string; url: string | null; folder: string } | null;
   createdAt: string;
   status: Status;
   bot: { text: string; tone: "bad" | "warn" | "good" | "plain" } | null;

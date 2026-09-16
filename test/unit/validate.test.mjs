@@ -59,3 +59,19 @@ test("samples: links validated, paths validated, images verified, limits enforce
   assert.throws(() => parseSamples(Array(4).fill({ kind: "image", name: "a", data: PNG_1x1 })), /Up to 3/);
   assert.throws(() => parseSamples([{ kind: "image", name: "a", data: "data:image/png;base64,AAAA" }]), /could not be read/);
 });
+
+test("inspiration: good paths pass; malformed and overlong paths have a 400 cause", () => {
+  for (const path of ["clips/ideas/hero-01", `clips/${"a".repeat(40)}/${"b".repeat(50)}`]) {
+    assert.deepEqual(parseReport({ ...good, inspiration: { path } }).inspiration, { path });
+  }
+  for (const path of ["", "clips/../hero", "clips/Ideas/hero", "clips/-ideas/hero", "clips/ideas/-hero", "clips/ideas/hero/meta.json", `clips/${"a".repeat(41)}/hero`, `clips/ideas/${"b".repeat(51)}`]) {
+    assert.throws(() => parseReport({ ...good, inspiration: { path } }), (e) => e instanceof Reject && e.status === 400 && /clip path/.test(e.message));
+  }
+});
+
+test("inspiration: foreign repo shape, URL scheme and length are enforced", () => {
+  const inspiration = { path: "clips/ideas/hero-01", repo: "other.owner/clip_repo", url: "https://other.example/clips?clip=clips/ideas/hero-01" };
+  assert.deepEqual(parseReport({ ...good, inspiration }).inspiration, inspiration);
+  for (const repo of ["one", "a/b/c", "https://a/b", "a/b\n", 42]) rejects({ ...good, inspiration: { ...inspiration, repo } }, /owner\/repo/);
+  for (const url of ["javascript:alert(1)", "ftp://example.com", "not a URL", "https://example.com/\ninjected", "https://example.com/" + "a".repeat(500)]) rejects({ ...good, inspiration: { ...inspiration, url } }, /http or https/);
+});

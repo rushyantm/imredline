@@ -90,3 +90,25 @@ test("title is capped at 120 chars", () => {
   assert.ok(title.length <= 120, String(title.length));
   assert.ok(title.endsWith("…"));
 });
+
+for (const repo of [undefined, "acme/site", "other/clips"]) {
+  for (const url of [undefined, "https://other.example/imredline/clips?clip=clips/ideas/hero-01"]) {
+    test(`inspiration round-trip: ${repo || "default repo"}, ${url ? "with URL" : "without URL"}`, () => {
+      const path = "clips/ideas/hero-01";
+      const { title, body } = formatIssue({ ...draft, repo: "acme/site", inspiration: { path, repo, url } });
+      const suffix = repo && repo !== "acme/site" ? ` (${repo})` : "";
+      assert.ok(body.includes(`- **device:** phone · portrait · touch\n- **inspiration:** \`${path}\`${suffix}\n`));
+      assert.ok(body.indexOf("📎 inspiration:") > body.indexOf("📷"));
+      assert.ok(body.indexOf("📎 inspiration:") < body.indexOf("**Samples to guide"));
+      assert.ok(body.includes("Do not copy the source's text, images, logos, animation files or code."));
+      const row = parseIssue({ number: 7, html_url: "https://github.com/acme/site/issues/7", title, body, state: "open", created_at: "", labels: [] });
+      assert.deepEqual(row.inspiration, { path, repo: repo || "acme/site", url: url || null, folder: `https://github.com/${repo || "acme/site"}/tree/imredline-clips/${path}` });
+    });
+  }
+}
+
+test("old bodies without inspiration still parse with null", () => {
+  for (const body of ["", formatIssue(draft).body]) {
+    assert.equal(parseIssue({ number: 7, html_url: "https://github.com/acme/site/issues/7", title: "[change] / — note", body, state: "open", created_at: "", labels: [] }).inspiration, null);
+  }
+});

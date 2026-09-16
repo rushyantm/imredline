@@ -391,3 +391,50 @@ test("clip: IMREDLINE_CLIP_ORIGINS=* opens session + clip to any origin, never r
   assert.equal(separate.status, 200);
   assert.equal((await separate.json()).repo, "acme/swipe");
 });
+
+test("inspiration: local meta is checked, both blocks filed, queue carries the reference", async () => {
+  const local = fakeGitHub();
+  const path = "clips/ideas/hero-01";
+  local.state.contents.set(`imredline-clips:${path}/meta.json`, Buffer.from("{}"));
+  const run = (body) => handle(new Request(ORIGIN + "/imredline/api/report", { method: "POST", headers: { "Content-Type": "application/json", cookie: "imredline=ravi-secret" }, body: JSON.stringify(body) }), { env, fetch: local.fetch });
+  for (const [i, repo] of [undefined, "acme/site"].entries()) {
+    const res = await run(report({ requestId: `dddddddd-bbbb-4ccc-8ddd-00000000000${i}`, samples: [], inspiration: { path, repo, url: `${ORIGIN}/imredline/clips?clip=${path}` } }));
+    assert.equal(res.status, 201, JSON.stringify(await res.json()));
+    assert.ok(local.state.issues.at(-1).body.includes(`- **inspiration:** \`${path}\`\n`));
+    assert.ok(local.state.issues.at(-1).body.includes(`📎 inspiration: ${ORIGIN}/imredline/clips?clip=${path}  — folder: https://github.com/acme/site/tree/imredline-clips/${path}`));
+    assert.ok(local.state.issues.at(-1).body.includes("📷"));
+  }
+  assert.ok(local.state.calls.includes(`GET /contents/${path}/meta.json?ref=imredline-clips`));
+  const q = await handle(new Request(ORIGIN + "/imredline/api/queue", { headers: { cookie: "imredline=ravi-secret" } }), { env, fetch: local.fetch });
+  assert.deepEqual((await q.json()).rows[0].inspiration, { path, repo: "acme/site", url: `${ORIGIN}/imredline/clips?clip=${path}`, folder: `https://github.com/acme/site/tree/imredline-clips/${path}` });
+  const missing = await run(report({ inspiration: { path: "clips/ideas/missing" } }));
+  assert.equal(missing.status, 400);
+  assert.equal((await missing.json()).error, "That clip does not exist here");
+  assert.equal(local.state.issues.length, 2);
+});
+
+test("inspiration: foreign repo files unverified, including cross-origin reports", async () => {
+  const local = fakeGitHub();
+  const inspiration = { path: "clips/ideas/foreign-01", repo: "other/site", url: "https://other.example/imredline/clips?clip=clips/ideas/foreign-01" };
+  const res = await handle(new Request(ORIGIN + "/imredline/api/report", { method: "POST", headers: { "Content-Type": "application/json", origin: "https://old.example" }, body: JSON.stringify(report({ token: "ravi-secret", page: "old.example/rooms", inspiration, samples: [] })) }), { env, fetch: local.fetch });
+  assert.equal(res.status, 201);
+  assert.equal(res.headers.get("access-control-allow-origin"), "https://old.example");
+  assert.ok(local.state.issues[0].body.includes("`clips/ideas/foreign-01` (other/site)"));
+  assert.ok(!local.state.calls.some((c) => c.includes("meta.json") || c.includes("other/site")));
+});
+
+test("inspiration: the configured clips repo is checked and recorded, GitHub outage is best-effort", async () => {
+  const reports = fakeGitHub();
+  const clips = fakeGitHub({ repo: "acme/swipe" });
+  const path = "clips/ideas/hero-01";
+  clips.state.contents.set(`imredline-clips:${path}/meta.json`, Buffer.from("{}"));
+  const fetch = (url, init) => new URL(url).pathname.startsWith("/repos/acme/swipe/") ? clips.fetch(url, init) : reports.fetch(url, init);
+  const req = () => new Request(ORIGIN + "/imredline/api/report", { method: "POST", headers: { "Content-Type": "application/json", cookie: "imredline=ravi-secret" }, body: JSON.stringify(report({ inspiration: { path }, samples: [] })) });
+  const res = await handle(req(), { env: { ...env, IMREDLINE_CLIPS_REPO: "acme/swipe" }, fetch });
+  assert.equal(res.status, 201);
+  assert.ok(clips.state.calls.includes(`GET /contents/${path}/meta.json?ref=imredline-clips`));
+  assert.ok(reports.state.issues[0].body.includes("`clips/ideas/hero-01` (acme/swipe)"));
+  const outage = fakeGitHub();
+  const bestEffort = await handle(req(), { env, fetch: (url, init) => url.includes("meta.json") ? Promise.resolve(new Response("unavailable", { status: 503 })) : outage.fetch(url, init) });
+  assert.equal(bestEffort.status, 201);
+});

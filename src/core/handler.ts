@@ -48,7 +48,7 @@ import { GitHub, type Fetch } from "./github.js";
 import { formatIssue, parseIssue, prsByReport } from "./issue.js";
 import { queuePage } from "./page.js";
 import { CLIPS_BRANCH, REVIEW_LABEL, STATUSES, type Access, type ClipIndexEntry, type QueueRow } from "./types.js";
-import { imageData, parseReport, Reject, slug, viewportText } from "./validate.js";
+import { imageData, parseReport, Reject, slug, validateInspiration, viewportText } from "./validate.js";
 
 export type HandlerOptions = {
   env?: Env;
@@ -221,6 +221,9 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
       const twin = await gh.findByMarker(input.requestId);
       if (twin) return json({ ok: true, number: twin.number, url: twin.html_url, duplicate: true, hasShot: /📷/.test(twin.body || "") }, 200, cors);
 
+      const clipsRepo = c.clipsRepo || c.githubRepo;
+      await validateInspiration(input.inspiration, new GitHub(env, opts.fetch, clipsRepo));
+
       const stamp = `${new Date().toISOString().replace(/[:.]/g, "-")}-${slug(access.name)}`;
       let shotPath: string | null = null;
       let shotError = input.shotError ?? null;
@@ -254,6 +257,8 @@ export async function handle(req: Request, opts: HandlerOptions = {}): Promise<R
         selector: input.selector ?? null,
         viewport: viewportText(input.viewport),
         device: input.device ?? null,
+        repo: gh.repoName,
+        inspiration: input.inspiration ? { ...input.inspiration, repo: input.inspiration.repo || clipsRepo } : undefined,
         shotPath,
         shotError,
         shotNote: input.shotNote ?? null,

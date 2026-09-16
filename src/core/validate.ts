@@ -5,6 +5,7 @@
 */
 
 import {
+  CLIPS_BRANCH,
   DEVICE_KINDS,
   IMAGE_MAX,
   NOTE_MAX,
@@ -18,6 +19,8 @@ import {
   type Sample,
   type Viewport,
 } from "./types.js";
+
+import type { GitHub } from "./github.js";
 
 export class Reject extends Error {
   constructor(
@@ -153,6 +156,47 @@ export function parseViewport(raw: unknown): Viewport | undefined {
 export const viewportText = (v: Viewport | undefined): string | null =>
   v ? `${v.width}x${v.height}${v.dpr && v.dpr !== 1 ? ` @${Math.round(v.dpr * 100) / 100}x` : ""}` : null;
 
+/** Paths are the clip folder contract, not arbitrary GitHub addresses. */
+export function parseInspiration(raw: unknown): ReportInput["inspiration"] {
+  if (raw == null) return undefined;
+  const o = typeof raw === "object" ? raw as Record<string, unknown> : {};
+  if (typeof o.path !== "string" || !/^clips\/[a-z0-9][a-z0-9-]{0,39}\/[a-z0-9][a-z0-9-]{0,49}$/.test(o.path)) {
+    return fail("Use a clip path like clips/collection/name-01.");
+  }
+  const out: NonNullable<ReportInput["inspiration"]> = { path: o.path };
+  if (o.repo != null && o.repo !== "") {
+    if (typeof o.repo !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(o.repo)) fail("Use an inspiration repo in owner/repo form.");
+    out.repo = o.repo as string;
+  }
+  if (o.url != null && o.url !== "") {
+    if (typeof o.url !== "string" || o.url.length > 500 || /[\p{Cc}\p{Cf}]/u.test(o.url)) {
+      fail("Use an http or https inspiration link of at most 500 characters.");
+    }
+    const value = o.url as string;
+    try {
+      const u = new URL(value);
+      if (!["http:", "https:"].includes(u.protocol)) throw new Error();
+    } catch {
+      return fail("Use an http or https inspiration link.");
+    }
+    out.url = value;
+  }
+  return out;
+}
+
+/** Only a confirmed missing local clip blocks a report. An outage is not
+ *  proof of absence; foreign repos and pasted URLs are never fetched here. */
+export async function validateInspiration(inspiration: ReportInput["inspiration"], gh: Pick<GitHub, "repoName" | "api">): Promise<void> {
+  if (!inspiration || (inspiration.repo && inspiration.repo !== gh.repoName)) return;
+  let res: Response;
+  try {
+    res = await gh.api(`/contents/${inspiration.path}/meta.json?ref=${CLIPS_BRANCH}`);
+  } catch {
+    return;
+  }
+  if (res.status === 404) fail("That clip does not exist here");
+}
+
 /** Whole body. Throws Reject with a message the widget can show verbatim. */
 export function parseReport(body: unknown): ReportInput {
   if (!body || typeof body !== "object") fail("Invalid submission.");
@@ -179,6 +223,8 @@ export function parseReport(body: unknown): ReportInput {
   const shotNote = clean(b.shotNote, 300).replace(/\n/g, " ");
   if (shotNote) out.shotNote = shotNote;
   out.samples = parseSamples(b.samples);
+  const inspiration = parseInspiration(b.inspiration);
+  if (inspiration) out.inspiration = inspiration;
   if (typeof b.token === "string" && b.token) out.token = b.token.trim().slice(0, 200);
   return out;
 }
