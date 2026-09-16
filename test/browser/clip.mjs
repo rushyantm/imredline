@@ -182,6 +182,7 @@ browser.on("context", (c) => c.on("page", (p) => {
   await page.screenshot({ path: join(OUT, "clip-02-gallery.jpg"), type: "jpeg", quality: 80, fullPage: true });
   await page.click(".imc-card");
   await page.waitForSelector(".imc-readme h1");
+  check("gallery: reviewer has no Discard on the grid or detail", await page.locator(".imc-discard").count() === 0);
   check("gallery: README rendered", /hero — clipped from/.test(await page.locator(".imc-readme h1").textContent()));
   check("gallery: tokens table rendered", (await page.locator(".imc-readme table").count()) >= 2);
   const previewOk = await page.evaluate(() => {
@@ -301,6 +302,36 @@ browser.on("context", (c) => c.on("page", (p) => {
   const payload = (await sent).postDataJSON();
   check("inspiration: failed foreign discovery preserves URL and leaves repo empty", payload.inspiration.url === fallbackLink && !payload.inspiration.repo);
   await page.waitForFunction(() => /Filed as/.test(document.querySelector(".imr-toast")?.textContent || ""));
+  await ctx.close();
+}
+
+/* ── 5. admin housekeeping: detail-only discard, retained report reference ── */
+{
+  const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/imredline/clips?token=admin-secret-token`);
+  await page.waitForSelector(".imc-card");
+  check("gallery: admin grid has no Discard button", await page.locator(".imc-discard").count() === 0);
+  const count = await page.locator(".imc-card").count();
+  await page.locator(".imc-card").filter({ hasText: "fixture-ideas" }).click();
+  await page.waitForSelector(".imc-readme h1");
+  check("gallery: admin detail has ghost Discard at end of action row", await page.locator(".imc-actions > :last-child.imc-discard button.imc-ghost").textContent() === "Discard");
+  const before = gh.state.commits.length;
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  check("gallery: first click only confirms inline", await page.locator(".imc-discard").textContent() === "Discard this clip?✓✕" && gh.state.commits.length === before);
+  await page.getByRole("button", { name: "Cancel discard", exact: true }).click();
+  check("gallery: cancel makes no commit", gh.state.commits.length === before);
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm discard", exact: true }).click();
+  await page.waitForSelector(".imc-toast");
+  check("gallery: toast and list with card removed", await page.locator(".imc-toast").textContent() === "Discarded fixture-ideas/hero-01" && await page.locator(".imc-detail").isHidden() && await page.locator(".imc-card").count() === count - 1);
+  check("gallery: one discard commit removes audit too", gh.state.commits.length === before + 1 && gh.state.commits.at(-1).message === "discard fixture-ideas/hero-01 (by rishi)" && !gh.state.contents.has("imredline-clips:clips/fixture-ideas/hero-01/audit.md"));
+  await page.goto(`${base}/imredline/queue`);
+  const report = page.locator(".imq-card").filter({ hasText: "Use this clip as inspiration for the hero layout." });
+  await report.locator(".imq-insp-chip").click();
+  await report.locator(".imq-insp-missing").waitFor();
+  check("queue: discarded reference shows text instead of broken thumbnail", await report.locator(".imq-insp-missing").textContent() === "reference discarded" && await report.locator(".imq-insp-thumb").count() === 0);
+  check("queue: issue reference line retained", gh.state.issues[0].body.includes("- **inspiration:** `clips/fixture-ideas/hero-01`"));
   await ctx.close();
 }
 

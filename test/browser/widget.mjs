@@ -186,9 +186,26 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
   check("queue: device chips on both cards", chips.some((c) => c.includes("desktop")) && chips.some((c) => c.includes("tablet")), chips.join(" | "));
   check("queue: samples listed", (await page.locator(".imq-samples li").count()) === 3);
   await page.screenshot({ path: join(OUT, "widget-03-queue.jpg"), type: "jpeg", quality: 80, fullPage: true });
-  await page.click(".imq-card .imq-status");
+  await page.locator(".imq-card").first().getByRole("button", { name: "Done", exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll(".imq-card").length === 1);
   check("queue: Done closes the issue on GitHub", gh.state.issues[0].state === "closed" || gh.state.issues[1].state === "closed");
+  check("queue: default filter stays Open", await page.locator(".imq-filters select").first().inputValue() === "open");
+  const beforeDiscard = gh.state.calls.length;
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  check("queue: first click is inline confirmation, no write", await page.locator(".imq-discard").textContent() === "Discard?✓✕" && gh.state.calls.length === beforeDiscard);
+  await page.getByRole("button", { name: "Cancel discard", exact: true }).click();
+  check("queue: cancel restores Discard without a write", await page.getByRole("button", { name: "Discard", exact: true }).count() === 1 && gh.state.calls.length === beforeDiscard);
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  await page.locator(".imq-discard-why").fill("Duplicate report");
+  await page.getByRole("button", { name: "Confirm discard", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector(".imq-sub")?.textContent === "0 open · 1 done · 1 discarded of 2");
+  check("queue: discard posts one why comment and closes not planned", gh.state.issues.some((i) => i.state_reason === "not_planned" && i.comments?.length === 1 && i.comments[0] === "Discarded from the queue by rishi: Duplicate report"));
+  await page.locator(".imq-filters select").first().selectOption("discarded");
+  const discarded = page.locator(".imq-card--discarded");
+  check("queue: discarded row muted, plain chip, Done absent", await discarded.evaluate((el) => getComputedStyle(el).opacity) === "0.55" && await discarded.locator(".imq-chip--plain").textContent() === "discarded" && await discarded.getByRole("button", { name: "Done", exact: true }).count() === 0);
+  await discarded.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector(".imq-sub")?.textContent === "1 open · 1 done · 0 discarded of 2");
+  check("queue: restore reopens and removes discarded label", gh.state.issues.some((i) => i.comments?.length === 1 && i.state === "open" && !i.labels.some((l) => l.name === "discarded")));
   /* The bare URL works now — the ?token= visit armed this browser. */
   await page.goto(`${base}/imredline/queue`);
   await page.waitForSelector(".imq-card");
@@ -207,6 +224,7 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
 }
 
 /* ── 4. the queue, as a plain reviewer: read-only ── */
+gh.state.issues.find((i) => i.state === "closed").state_reason = "not_planned";
 {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   const page = await ctx.newPage();
@@ -216,6 +234,9 @@ const pngBuffer = Buffer.from(PNG_1x1.split(",")[1], "base64");
   check("reviewer queue: no Done/Reopen buttons", (await page.locator(".imq-status").count()) === 0);
   check("reviewer queue: no reviewer panel", (await page.locator(".imq-admin").count()) === 0);
   check("reviewer queue: status shown as a chip", (await page.locator(".imq-card .imq-chip").count()) >= 1);
+  await page.locator(".imq-filters select").first().selectOption("discarded");
+  await page.waitForSelector(".imq-card--discarded");
+  check("reviewer queue: discarded chip, muted row and no action buttons", await page.locator(".imq-card .imq-chip--plain").textContent() === "discarded" && await page.locator(".imq-card button").count() === 0 && await page.locator(".imq-card").evaluate((el) => getComputedStyle(el).opacity) === "0.55");
   await page.screenshot({ path: join(OUT, "widget-04-queue-reviewer.jpg"), type: "jpeg", quality: 80, fullPage: true });
   await ctx.close();
 }
