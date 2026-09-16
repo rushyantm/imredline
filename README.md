@@ -12,7 +12,7 @@ One package. Installs the same way on every site. Reviewers need no account. Git
   <img src="docs/media/demo.gif" alt="A reviewer opens their link, clicks Review, pins a price, writes a note, sends — and the report appears in the queue" width="900">
 </p>
 
-**Status:** 0.6.0 in this branch. The 0.5.x package is on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
+**Status:** 0.7.0 in this branch. 0.6.0 is on npm (`npm i imredline`), running on five production sites (Nutrition Nest, EIPL Energy, PEMA Wellness, Aradea, Pebble Beach). The issue-body contract and the clip folder layout are frozen; the rest may still move before 1.0.
 
 Community-supported. MIT.
 
@@ -147,7 +147,7 @@ One clip is one commit. A coding agent building a new site reads the branch — 
 
 **Report with inspiration (0.6.0).** Clip first, then press **🛠 Review** on the site you want to change. Under the note, choose one of the latest 20 clips or paste a gallery link from the clip toast's **Copy link** button. The thumbnail shows your choice; **Clear** removes it. Send carries the reference into the issue, and the queue shows a **with reference** chip, thumbnail and folder link. Inspiration is optional: rebuild the idea with your own words, images and brand.
 
-**Discard (0.6.0).** Admins can discard an open report in the queue with an inline confirm and an optional reason (up to 300 characters). It posts a comment naming the admin, closes the issue as **not planned**, and adds `discarded`. Muted rows and the **Discarded** filter keep housekeeping separate from **Done**; **Restore** reopens the report. The sub-line counts open, done and discarded reports. Reviewers see the status without action buttons.
+**Discard (0.7.0).** Admins can discard an open report in the queue with an inline confirm and an optional reason (up to 300 characters). It posts a comment naming the admin, closes the issue as **not planned**, and adds `discarded`. Muted rows and the **Discarded** filter keep housekeeping separate from **Done**; **Restore** reopens the report. The sub-line counts open, done and discarded reports. Reviewers see the status without action buttons.
 
 On a clip's detail view, the admin's **Discard** removes the folder and its index entry in one commit; the toast confirms it and the card leaves the list. Undo with `git revert <sha>` on `imredline-clips`. Reports keep their inspiration line and show “reference discarded” when the thumbnail is gone. For the same cleanup from a terminal, [`queue.mjs`](skills/imredline-fix/scripts/queue.mjs) has `discard` (`skip` is an alias), and [`clips.mjs`](skills/imredline-fix/scripts/clips.mjs) has `list` and `discard`; see [step 6](skills/imredline-fix/SKILL.md#steps). Bot labels and report bodies stay intact.
 

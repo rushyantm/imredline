@@ -10,8 +10,9 @@ export const REPORT_TYPES = ["bug", "change", "idea"] as const;
 export type ReportType = (typeof REPORT_TYPES)[number];
 export const DEFAULT_TYPE: ReportType = "change";
 
-/** Two, by owner ruling. Open = issue open, done = issue closed. Progress is
- *  the bot's own labels, never a hand-set middle state. */
+/** Three. Open = issue open, done = closed (fixed), discarded = closed as
+ *  not planned (0.7.0, owner housekeeping). Progress is the bot's own labels,
+ *  never a hand-set middle state. */
 export const STATUSES = ["open", "done", "discarded"] as const;
 export type Status = (typeof STATUSES)[number];
 

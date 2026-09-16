@@ -5,8 +5,7 @@ all the sites and all the queues to discard certain things so I can do the
 housekeeping myself, as well as you do it when you are finishing work or
 getting instructions." Two surfaces, one verb, admin only.
 
-Ships inside the still-unpublished 0.6.0 (do not bump the version; extend the
-0.6.0 notes in README / CHANGELOG where "report with inspiration" is described).
+Written for 0.6.0; 0.6.0 was published before this landed, so it ships as **0.7.0**.
 
 ## What "discard" means
 
