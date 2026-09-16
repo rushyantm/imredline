@@ -103,7 +103,7 @@ Without the GitHub variables every write returns 503 and the widget says so. It 
 |---|---|
 | ![Clip dialog on a room card: Widen/Narrow, name, collection, stats, screenshot ready](docs/media/03-clip.png) | ![Clips gallery with a card, swatches, font, and the bookmarklet](docs/media/04-gallery.png) |
 
-Every picture above comes from `node scripts/media.mjs`: the real widget on the demo page in `docs/demo/`, against an in-memory GitHub. Run it to regenerate them after a UI change.
+Every picture above comes from `npm run media`: the real widget on the demo page in `docs/demo/`, against an in-memory GitHub. Run it to regenerate them after a UI change.
 
 ## The queue
 
@@ -114,6 +114,11 @@ Every picture above comes from `node scripts/media.mjs`: the real widget on the 
 ## Clip — components for inspiration
 
 The bar has a second button: **✂ Clip**. Same point-and-click, but nothing is filed. The component you pick lands on the `imredline-clips` branch as a folder any person or coding agent can rebuild from:
+
+<p align="center">
+  <img src="docs/media/demo-clip.gif" alt="✂ Clip: pick a room card, Widen to the whole card, name it, Clip — then open it in the gallery and Copy prompt" width="900">
+</p>
+
 
 ```
 clips/<collection>/<name>-NN/
@@ -141,6 +146,16 @@ Nothing is fetched by the server and no image or font bytes are copied — the R
 One clip is one commit. A coding agent building a new site reads the branch — `clips/index.json` first, then the folder.
 
 **The audit half** is a skill for your own Claude Code, not package code: [`skills/imredline-audit`](skills/imredline-audit/SKILL.md). `/imredline-audit clips/<collection>/<slug>` runs the mechanical checks (contrast per text run on its real background, tap targets, type scale, spacing rhythm, heading order, copy length, motion without `prefers-reduced-motion`, missing focus styles, image alt and sizing, palette sprawl, div-soup), looks at the screenshot, and writes `audit.md` into the folder — fixes before reuse, what to steal, facts checked. The gallery shows an **audited** chip and the audit under the README. With `--issues` it files one `tester-feedback` issue per fix on the site's repo, in the same body contract as a report. Install: symlink that folder into `~/.claude/skills/`. A worked example is on this repo's own `imredline-clips` branch: `clips/inbox/main-part-01`.
+
+## Fix the review queue from a terminal
+
+Reports are plain GitHub issues, so any coding agent can work them. The repo ships a skill for Claude Code that makes it one sentence: **"Fix the review queue."** It lists the open reports, opens each screenshot, finds the element in the code, makes one commit per report, runs the repo's checks, ships the way the repo ships, and closes each issue with the commit in a comment.
+
+<p align="center">
+  <img src="docs/media/demo-fix.gif" alt="Terminal: claude › Fix the review queue — lists two reports, reads the screenshots, two one-line commits, tests pass, push, both issues closed with receipts" width="900">
+</p>
+
+That recording is a real run in this repo (issues #1 and #2, commits `48cb815` and `0bc4f8f`), condensed. Install: symlink [`skills/imredline-fix`](skills/imredline-fix/SKILL.md) into `~/.claude/skills/` (or `node_modules/imredline/skills/imredline-fix` from a project that has the package). **Codex** users paste the skill's Steps and Rules into `AGENTS.md`; the helper script is the same. The skill never touches reports another agent holds (`pr-open`, `fixing`) or ones marked `needs-owner`.
 
 ## The issue body is a contract
 

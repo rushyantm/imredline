@@ -92,7 +92,7 @@ async function seed() {
     await sleep(300);
   };
   await file("#room-tide .price", "Bug", "Tide shows $310 here but $250 in the rates table for the same season.");
-  await file(".rates th:nth-child(5)", "Change", "\"Minimum stay\" wraps to two lines on a 13\" laptop — shorten to \"Min. stay\".");
+  await file(".rates th:nth-child(1)", "Change", "Season names are long — keep the season word and move the months to a second, lighter line.");
   /* one clip */
   await page.click(".imr-clip");
   const [cx, cy] = await centre(page, "#room-dune h3");
